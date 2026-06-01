@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+.env
+*.log
+.DS_Store
+claude.md
+.env.example
+.playwright-mcp/
