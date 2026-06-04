@@ -4,7 +4,7 @@ import { useState } from 'react';
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
 import Table from './Table';
-import { fmtPct, fmtVarPC, fmtVarPCColored } from '@/lib/fmt';
+import { fmtPct, fmtVarPC } from '@/lib/fmt';
 
 const VIEWS = [
   { id: 'weekly', label: 'Weekly' },
@@ -76,17 +76,17 @@ export default function Costs({ data }) {
         <div className="kpi-card">
           <div className="kpi-label">Avg Labor %</div>
           <div className="kpi-value">{fmtPct(total.laborAct)}</div>
-          <div className={`kpi-change ${varLabor <= 0 ? 'neg' : 'pos'}`}>Bud: {fmtPct(total.laborBud)} · Var: {fmtVarPC(varLabor)}</div>
+          <div className="kpi-change neu">Bud: {fmtPct(total.laborBud)} · Var: {fmtVarPC(varLabor)}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Avg COGS %</div>
           <div className="kpi-value">{fmtPct(total.cogsAct)}</div>
-          <div className={`kpi-change ${varCogs <= 0 ? 'neg' : 'pos'}`}>Bud: {fmtPct(total.cogsBud)} · Var: {fmtVarPC(varCogs)}</div>
+          <div className="kpi-change neu">Bud: {fmtPct(total.cogsBud)} · Var: {fmtVarPC(varCogs)}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Prime Cost %</div>
           <div className="kpi-value">{fmtPct(total.pcAct)}</div>
-          <div className={`kpi-change ${varPC <= 0 ? 'neg' : 'pos'}`}>Bud: {fmtPct(total.pcBud)} · Var: {fmtVarPC(varPC)}</div>
+          <div className="kpi-change neu">Bud: {fmtPct(total.pcBud)} · Var: {fmtVarPC(varPC)}</div>
         </div>
       </div>
 
@@ -120,7 +120,7 @@ export default function Costs({ data }) {
           ]}
           rows={d.map(r => ({
             _cls: /^totals?$/i.test(r.loc) ? 'total-row' : '',
-            cells: [r.loc, fmtPct(r.laborAct), fmtPct(r.laborBud), fmtPct(r.cogsAct), fmtPct(r.cogsBud), fmtPct(r.pcAct), fmtPct(r.pcBud), fmtVarPCColored(r.varPC || 0)],
+            cells: [r.loc, fmtPct(r.laborAct), fmtPct(r.laborBud), fmtPct(r.cogsAct), fmtPct(r.cogsBud), fmtPct(r.pcAct), fmtPct(r.pcBud), fmtVarPC(r.varPC || 0)],
           }))}
         />
       </div>
