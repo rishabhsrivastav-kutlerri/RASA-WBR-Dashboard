@@ -91,7 +91,7 @@ function cvrCell(v) {
 function roasCell(v) {
   const n = Number(v) || 0;
   const cls = n >= 4 ? 'green' : n > 3.5 ? 'amber' : 'red';
-  return `<span class="badge ${cls}">${n.toFixed(2)}×</span>`;
+  return `<span class="badge ${cls}">${n.toFixed(1)}×</span>`;
 }
 
 // ─── Catering Marketing ─────────────────────────────────────────────────────
@@ -114,9 +114,9 @@ function CateringMarketing({ data, sub, setSub, period, setPeriod }) {
     ? ((tFlow.opened / tFlow.delivered) * 100).toFixed(1) + '%' : '-';
 
   const ezRows = ezAds.filter(r => !/^total$/i.test(r.loc || ''));
-  const avgRoas = ezRows.length
-    ? (ezRows.reduce((a, r) => a + (Number(r.roas) || 0), 0) / ezRows.length)
-    : 0;
+  // ROAS shown in the KPI card mirrors the EzCater input table's Total row exactly.
+  const ezTotal = ezAds.find(r => r.isTotal || /^total$/i.test(r.loc || ''));
+  const totalRoas = Number(ezTotal?.roas) || 0;
 
   const lbl = is30 ? '30 Days' : '90 Days';
 
@@ -148,7 +148,7 @@ function CateringMarketing({ data, sub, setSub, period, setPeriod }) {
         {is30 && (
           <div className="kpi-card">
             <div className="kpi-label">EzCater Ad ROAS (30d)</div>
-            <div className="kpi-value">{avgRoas.toFixed(2)}×</div>
+            <div className="kpi-value">{totalRoas.toFixed(1)}×</div>
             <div className="kpi-change pos">{ezRows.length} Locations</div>
           </div>
         )}
@@ -202,7 +202,7 @@ function CateringMarketing({ data, sub, setSub, period, setPeriod }) {
                   fmtN(r.orders),
                   fmt$(r.adSpend != null ? r.adSpend : r.spend),
                   fmt$(r.sales),
-                  isTotal ? (Number(r.roas) || 0).toFixed(2) + '×' : roasCell(r.roas),
+                  isTotal ? (Number(r.roas) || 0).toFixed(1) + '×' : roasCell(r.roas),
                   fmtN(r.custNew),
                   fmtN(r.custExisting),
                   fmtN(r.custLapsed),
