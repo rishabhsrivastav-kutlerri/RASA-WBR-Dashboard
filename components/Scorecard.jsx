@@ -100,12 +100,20 @@ export default function Scorecard() {
   }, [index, gran]);
 
   useEffect(() => {
-    if (!item) return;
+    if (!index || !item) return;
+    // Guard the granularity↔item race: right after the granularity changes, the
+    // item is briefly still the previous granularity's selection. Wait until the
+    // item actually belongs to the current granularity before fetching, so we
+    // never request a (period, weekly-file) mismatch (which 404s).
+    const list = index[gran] || [];
+    if (!list.some(o => o.id === item)) return;
+    let cancelled = false; // ignore a stale response if the user switches again
     setLoading(true);
     fetchScorecard(gran, item)
-      .then(d => { setData(d); setLoading(false); setError(''); })
-      .catch(e => { setError(e.message); setLoading(false); });
-  }, [gran, item]);
+      .then(d => { if (!cancelled) { setData(d); setLoading(false); setError(''); } })
+      .catch(e => { if (!cancelled) { setError(e.message); setLoading(false); } });
+    return () => { cancelled = true; };
+  }, [index, gran, item]);
 
   const list = (index && index[gran]) || [];
   const current = list.find(i => i.id === item);
