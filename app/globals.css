@@ -312,16 +312,22 @@ thead th.right {
   line-height: 1.2;
   vertical-align: bottom;
 }
-/* Scorecard tables reproduce the sheet's color coding; bordered cells keep
-   adjacent fills from blending together. Headers wrap rather than force width. */
-.scorecard-table th,
-.scorecard-table td {
-  border: 1px solid var(--border);
-}
+/* Scorecard tables: headers wrap rather than force width (no cell borders —
+   matches the other tabs' borderless look). */
 .scorecard-table thead th {
   white-space: normal;
   line-height: 1.2;
   vertical-align: bottom;
+}
+/* Pill (badge) for scorecard values — soft tint of the sheet's color. */
+.sc-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.3;
+  font-family: var(--mono);
 }
 tbody td {
   padding: 10px 12px;

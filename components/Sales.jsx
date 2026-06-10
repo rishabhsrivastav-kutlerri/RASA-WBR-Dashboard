@@ -26,13 +26,31 @@ const SUB_OPTIONS = [
 const CAT_LABEL = { delivery: 'Delivery', pickup: 'Pickup (Takeout)', catering: 'Catering', offsites: 'Offsites' };
 const PIE_COLORS = ['#9f7cef', '#f9a8d4', '#86efac', '#fcd34d', '#93c5fd', '#f9a8a8'];
 
-export default function Sales({ data }) {
+export default function Sales({ data, prevData }) {
   const [view, setView] = useState('weekly');
   const [sub, setSub]   = useState('all');
   const [loc, setLoc]   = useState('all');
 
   const views = data.qtdAvailable ? VIEWS : VIEWS.filter(v => v.id !== 'qtd');
   const vl = view === 'weekly' ? 'Weekly' : view === 'ptd' ? 'PTD' : view === 'qtd' ? 'QTD' : 'YTD';
+
+  // Var to Last Week — weekly view only. Pull the previous week's actuals for
+  // whatever the current location/sub-category selection resolves to, and
+  // return a colored % vs the matching row (or '-' when no match / not weekly).
+  const isWeekly = view === 'weekly';
+  const prevRC = isWeekly
+    ? (loc !== 'all' ? prevData?.revCenterByLoc?.[loc]?.weekly : prevData?.revCenter?.weekly)
+    : null;
+  const prevSCAll = isWeekly
+    ? (loc !== 'all' ? prevData?.subCatsByLoc?.[loc]?.weekly : prevData?.subCats?.weekly)
+    : null;
+  const lwCellFrom = (prevArr, keyField, label, actual) => {
+    if (!prevArr || !prevArr.length) return '-';
+    const p = /^total/i.test(String(label))
+      ? prevArr.reduce((s, r) => s + (r.actual || 0), 0)
+      : (prevArr.find(r => String(r[keyField]) === String(label)) || {}).actual;
+    return (p != null && p !== 0) ? fmtVarColored((actual - p) / p) : '-';
+  };
 
   let rc;
   if (loc !== 'all' && data.revCenterByLoc && data.revCenterByLoc[loc]) {
@@ -67,13 +85,14 @@ export default function Sales({ data }) {
     tableHeaders = [
       { label: 'Revenue Centre' },
       { label: 'Actual', cls: 'right' },
+      ...(isWeekly ? [{ label: 'Var vs LW', cls: 'right' }] : []),
       { label: 'LY', cls: 'right' },
       { label: 'Var $', cls: 'right' },
       { label: 'Var %', cls: 'right' },
     ];
     tableRows = rcWithTotal.map(r => ({
       _cls: r._isTotal ? 'total-row' : '',
-      cells: [r.center, fmt$(r.actual), fmt$(r.ly), fmt$(r.varD), fmtVarColored(r.varP)],
+      cells: [r.center, fmt$(r.actual), ...(isWeekly ? [lwCellFrom(prevRC, 'center', r.center, r.actual)] : []), fmt$(r.ly), fmt$(r.varD), fmtVarColored(r.varP)],
     }));
   } else {
     const lbl = CAT_LABEL[sub];
@@ -98,6 +117,16 @@ export default function Sales({ data }) {
     chartTitle = `${lbl} — ${vl}${loc !== 'all' ? ' · ' + loc : ''} vs LY`;
     pieTitle   = `${lbl} Revenue Mix — ${vl}${loc !== 'all' ? ' · ' + loc : ''}`;
 
+    // Ritual is excluded from the Pickup breakdown across all views. Also drop
+    // any existing Total row so it's recomputed from the remaining rows (i.e.
+    // without Ritual's contribution).
+    if (sub === 'pickup') {
+      subData = subData.filter(r => {
+        const name = String(r.sub ?? r.cat ?? '').trim();
+        return !/^ritual$/i.test(name) && !r.isTotal && !/^total/i.test(name);
+      });
+    }
+
     const labelKey = subData.length && subData[0].sub != null ? 'sub' : 'cat';
     const chartData = subData.filter(r => !r.isTotal && !/^total/i.test(r[labelKey] || ''));
     chartLabels = chartData.map(r => r[labelKey]);
@@ -120,13 +149,15 @@ export default function Sales({ data }) {
     tableHeaders = [
       { label: 'Sub-Category' },
       { label: 'Actual', cls: 'right' },
+      ...(isWeekly ? [{ label: 'Var vs LW', cls: 'right' }] : []),
       { label: 'LY', cls: 'right' },
       { label: 'Var $', cls: 'right' },
       { label: 'Var %', cls: 'right' },
     ];
+    const prevSub = prevSCAll ? prevSCAll[sub] : null;
     tableRows = tableData.map(r => ({
       _cls: (r.isTotal || r._isTotal || /^total/i.test(r[labelKey] || '')) ? 'total-row' : '',
-      cells: [r[labelKey], fmt$(r.actual), fmt$(r.ly), fmt$(r.varD), fmtVarColored(r.varP)],
+      cells: [r[labelKey], fmt$(r.actual), ...(isWeekly ? [lwCellFrom(prevSub, labelKey, r[labelKey], r.actual)] : []), fmt$(r.ly), fmt$(r.varD), fmtVarColored(r.varP)],
     }));
   }
 

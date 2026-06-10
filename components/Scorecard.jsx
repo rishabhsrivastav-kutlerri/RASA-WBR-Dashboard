@@ -18,28 +18,47 @@ function fmtCell(c) {
   return String(c.v);
 }
 
-// Soften a sheet fill (#RRGGBB) to a pastel tint so the tables match the rest of
-// the dashboard's look instead of the harsh saturated source fills.
-function softBg(hex) {
+// The dashboard's standard 3-tone palette (same soft colors as the .badge cells
+// on the other tabs).
+// Soft badge palette (same colors as the .badge cells on the other tabs), used
+// for the composite-score / contributor-band cells the sheet colors via rules.
+const BADGE_STYLE = {
+  green: { background: '#dcfce7', color: '#15803d' },
+  amber: { background: '#fef3c7', color: '#b45309' },
+  red:   { background: '#fee2e2', color: '#b91c1c' },
+};
+
+// A pill style for a sheet fill: light tint background + darker same-hue text,
+// keeping the sheet's exact color while matching the badge look elsewhere.
+function pillFromHex(hex) {
   if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return null;
-  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, 0.4)`;
+  const ch = i => parseInt(hex.slice(i, i + 2), 16);
+  const r = ch(1), g = ch(3), b = ch(5);
+  const light = x => Math.round(x + (255 - x) * 0.82);
+  const dark = x => Math.round(x * 0.5);
+  return { background: `rgb(${light(r)}, ${light(g)}, ${light(b)})`, color: `rgb(${dark(r)}, ${dark(g)}, ${dark(b)})` };
 }
 
-// Composite Score and Contributor Band get their color from Excel conditional
-// formatting (not a static fill), so SheetJS can't read it — derive it here.
-const G = 'rgba(52,168,84,0.38)', LG = 'rgba(182,215,168,0.55)', A = 'rgba(255,229,153,0.6)', R = 'rgba(255,92,95,0.4)';
-function deriveBg(header, v) {
+// Composite Score and Contributor Band are colored by Excel conditional
+// formatting (not a static fill SheetJS can read) — derive the tone.
+function deriveClass(header, v) {
   if (header === 'Composite Score' && typeof v === 'number') {
-    return v >= 4 ? G : v >= 3 ? LG : v >= 2 ? A : R;
+    return v >= 3 ? 'green' : v >= 2 ? 'amber' : 'red';
   }
   if (header === 'Contributor Band' && typeof v === 'string') {
     const t = v.toLowerCase();
-    if (/star|high/.test(t)) return G;
-    if (/contributor/.test(t)) return LG;
-    if (/low|non/.test(t)) return R;
+    if (/star|high|contributor/.test(t)) return 'green';
+    if (/low/.test(t)) return 'amber';
+    if (/non/.test(t)) return 'red';
   }
   return null;
+}
+
+// The badge style for a cell, or null when it has no color (plain text cell).
+function cellPill(header, c) {
+  if (c.bg) return pillFromHex(c.bg);
+  const cls = deriveClass(header, c.v);
+  return cls ? BADGE_STYLE[cls] : null;
 }
 
 // Reproduces the source workbook's color coding (softened), filling in the
@@ -57,10 +76,10 @@ function ColorTable({ title, data }) {
           {data.rows.map((row, ri) => (
             <tr key={ri}>
               {row.map((c, ci) => {
-                const bg = softBg(c.bg) || deriveBg(data.headers[ci], c.v);
+                const pill = cellPill(data.headers[ci], c);
                 return (
-                  <td key={ci} className={ci === 0 ? '' : 'right'} style={bg ? { background: bg } : undefined}>
-                    {fmtCell(c)}
+                  <td key={ci} className={ci === 0 ? '' : 'right'}>
+                    {pill ? <span className="sc-badge" style={pill}>{fmtCell(c)}</span> : fmtCell(c)}
                   </td>
                 );
               })}

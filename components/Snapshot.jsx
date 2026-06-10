@@ -4,7 +4,7 @@ import { useState } from 'react';
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
 import Table from './Table';
-import { fmt$, fmtVarColored } from '@/lib/fmt';
+import { fmt$, fmtVar, fmtVarColored } from '@/lib/fmt';
 
 const VIEWS = [
   { id: 'weekly', label: 'Weekly' },
@@ -13,7 +13,7 @@ const VIEWS = [
   { id: 'ytd',    label: 'Year to Date' },
 ];
 
-export default function Snapshot({ data }) {
+export default function Snapshot({ data, prevData }) {
   const [view, setView] = useState('weekly');
   // QTD only exists in workbooks that ship the QTD sheets (newer weeks).
   const views = data.qtdAvailable ? VIEWS : VIEWS.filter(v => v.id !== 'qtd');
@@ -21,6 +21,20 @@ export default function Snapshot({ data }) {
   const total = d.find(r => /^totals?$/i.test(r.loc)) || d[d.length - 1] || {};
   const rows = d.filter(r => !/^totals?$/i.test(r.loc));
   const vl = view === 'weekly' ? 'Weekly' : view === 'ptd' ? 'PTD' : view === 'qtd' ? 'QTD' : 'YTD';
+
+  // Var to Last Week — only meaningful for the weekly view; compare each
+  // location's actual to the previous week's actual.
+  const prevByLoc = {};
+  if (view === 'weekly') (prevData?.weekly?.sales || []).forEach(r => { prevByLoc[r.loc] = r.actual; });
+  const varLW = (loc, actual) => {
+    const p = prevByLoc[loc];
+    return (p != null && p !== 0) ? (actual - p) / p : null;
+  };
+  const lwCell = r => {
+    const v = varLW(r.loc, r.actual);
+    return v == null ? '-' : fmtVarColored(v);
+  };
+  const totalLW = varLW(total.loc || 'Totals', total.actual || 0);
 
   const salesChart = {
     labels: rows.map(r => r.loc),
@@ -55,6 +69,9 @@ export default function Snapshot({ data }) {
         <div className="kpi-card">
           <div className="kpi-label">Total Sales ({vl})</div>
           <div className="kpi-value">{fmt$(total.actual)}</div>
+          {totalLW != null && (
+            <div className={`kpi-change ${totalLW >= 0 ? 'pos' : 'neg'}`}>{fmtVar(totalLW)} vs last week</div>
+          )}
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Last Year (LY)</div>
@@ -101,6 +118,7 @@ export default function Snapshot({ data }) {
           headers={[
             { label: 'Location' },
             { label: 'Actual', cls: 'right' },
+            ...(view === 'weekly' ? [{ label: <>Var <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LW</>, cls: 'right' }] : []),
             { label: 'Last Year (LY)', cls: 'right' },
             { label: 'Budget (BUD)', cls: 'right' },
             { label: <>Var <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LY</>, cls: 'right' },
@@ -108,7 +126,7 @@ export default function Snapshot({ data }) {
           ]}
           rows={d.map(r => ({
             _cls: /^totals?$/i.test(r.loc) ? 'total-row' : '',
-            cells: [r.loc, fmt$(r.actual), fmt$(r.ly), fmt$(r.budget), fmtVarColored(r.varLY), fmtVarColored(r.varBud)],
+            cells: [r.loc, fmt$(r.actual), ...(view === 'weekly' ? [lwCell(r)] : []), fmt$(r.ly), fmt$(r.budget), fmtVarColored(r.varLY), fmtVarColored(r.varBud)],
           }))}
         />
       </div>

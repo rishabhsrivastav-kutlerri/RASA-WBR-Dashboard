@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [sheets, setSheets] = useState([]);
   const [week, setWeek] = useState('');
   const [data, setData] = useState(null);
+  const [prevData, setPrevData] = useState(null);
   const [tab, setTab] = useState('snapshot');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,10 +66,21 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!week) return;
     setLoading(true);
-    fetchWeekData(week)
-      .then(d => { setData(d); setLoading(false); setError(''); })
+    // Find the immediately-previous week (chronologically) to power the
+    // "Var to Last Week" comparison; fetch it alongside the current week.
+    const rank = s => (s.period == null ? -1 : s.period * 100 + (s.weekInPeriod || 0));
+    const cur = sheets.find(s => s.week === week);
+    const curRank = cur ? rank(cur) : -1;
+    const prev = sheets
+      .filter(s => rank(s) < curRank)
+      .sort((a, b) => rank(b) - rank(a))[0];
+    Promise.all([
+      fetchWeekData(week),
+      prev ? fetchWeekData(prev.week).catch(() => null) : Promise.resolve(null),
+    ])
+      .then(([d, pd]) => { setData(d); setPrevData(pd); setLoading(false); setError(''); })
       .catch(err => { setError(err.message); setLoading(false); });
-  }, [week]);
+  }, [week, sheets]);
 
   function handleLogout() {
     localStorage.removeItem('wbr_token');
@@ -175,8 +187,8 @@ export default function DashboardPage() {
         ) : (
           <>
             {loading && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)' }}><div className="spinner" style={{ margin: '0 auto 10px' }} />Loading week…</div>}
-            {!loading && tab === 'snapshot'      && <Snapshot data={data} />}
-            {!loading && tab === 'sales'         && <Sales data={data} />}
+            {!loading && tab === 'snapshot'      && <Snapshot data={data} prevData={prevData} />}
+            {!loading && tab === 'sales'         && <Sales data={data} prevData={prevData} />}
             {!loading && tab === 'costs'         && <Costs data={data} />}
             {!loading && tab === 'reviews'       && <Reviews data={data} />}
             {!loading && tab === 'thirdparty'    && <ThirdParty data={data} />}
