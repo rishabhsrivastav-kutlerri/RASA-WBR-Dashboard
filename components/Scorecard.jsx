@@ -13,11 +13,6 @@ function pill(hex) {
   const lum = 0.299 * r + 0.587 * g + 0.114 * b;
   return { background: hex, color: lum < 150 ? '#fff' : '#1a1f2e' };
 }
-const toHex = n => Math.round(n).toString(16).padStart(2, '0');
-function lerpHex(h1, h2, t) {
-  const a = hexRGB(h1), b = hexRGB(h2);
-  return '#' + [0, 1, 2].map(i => toHex(a[i] + (b[i] - a[i]) * t)).join('');
-}
 
 const GRANS = [
   { id: 'weekly',  label: 'Weekly' },
@@ -34,17 +29,14 @@ function fmtCell(c) {
   return String(c.v);
 }
 
-// The Composite Score is colored by a conditional-formatting rule in the sheet
-// (which the xlsx parser can't surface as a cell fill), so we apply that exact
-// rule here — read straight from the workbook's CF/dxfs. Period & Quarter use
-// discrete thresholds; Weekly uses a 0→2.7→5 color-scale gradient.
+// The Composite Score is colored by the Performance Rating Key — a conditional-
+// formatting rule the xlsx parser can't surface as a cell fill, so we apply it
+// here. Same discrete bands for Weekly, Period and Quarterly:
+//   STAR ≥4.7 #33A854 · HIGH ≥3.7 #B6D7A8 · CONTRIBUTOR ≥2.7 #FFE599
+//   · LOW ≥1.7 #EA9999 · NON <1.7 #FF5C5F.
 const COMPOSITE_BANDS = [[4.7, '#33A854'], [3.7, '#B6D7A8'], [2.7, '#FFE599'], [1.7, '#EA9999']];
-function compositeColor(v, gran) {
+function compositeColor(v) {
   if (typeof v !== 'number') return null;
-  if (gran === 'weekly') {
-    const c = Math.max(0, Math.min(5, v));
-    return c <= 2.7 ? lerpHex('#F8696B', '#FFF2CC', c / 2.7) : lerpHex('#FFF2CC', '#63BE7B', (c - 2.7) / 2.3);
-  }
   for (const [t, hex] of COMPOSITE_BANDS) if (v >= t) return hex;
   return '#FF5C5F';
 }
@@ -52,9 +44,9 @@ function compositeColor(v, gran) {
 // Pill color: the sheet's own cell fill, except columns the sheet colors via a
 // conditional-formatting rule (Composite Score; Training % ≥87% green / <87%
 // red) which we apply explicitly. Uncolored cells stay uncolored.
-function cellPill(header, c, gran) {
+function cellPill(header, c) {
   if (header === 'Composite Score') {
-    const hex = compositeColor(c.v, gran);
+    const hex = compositeColor(c.v);
     return hex ? pill(hex) : null;
   }
   // Contributor Band — color by the Performance Rating Key (same scale as the
@@ -73,7 +65,7 @@ function cellPill(header, c, gran) {
 }
 
 // Colors cells from the sheet's own fills (plus the Composite Score CF rule).
-function ColorTable({ title, data, gran }) {
+function ColorTable({ title, data }) {
   if (!data || !data.headers || !data.headers.length) return null;
   return (
     <div className="table-card" style={{ marginBottom: 16 }}>
@@ -88,7 +80,7 @@ function ColorTable({ title, data, gran }) {
               {row.map((c, ci) => {
                 // The first column is a label (location / category / "All
                 // Stores"), so it's never colored; every other cell keeps its color.
-                const style = ci === 0 ? null : cellPill(data.headers[ci], c, gran);
+                const style = ci === 0 ? null : cellPill(data.headers[ci], c);
                 return (
                   <td key={ci} className={ci === 0 ? '' : 'right'}>
                     {style ? <span className="sc-badge" style={style}>{fmtCell(c)}</span> : fmtCell(c)}
@@ -184,7 +176,7 @@ export default function Scorecard() {
       )}
       {!error && !loading && data && (
         <>
-          <ColorTable title={`Area Leader Dashboard${current ? ' — ' + current.label : ''}`} data={data.dashboard} gran={gran} />
+          <ColorTable title={`Area Leader Dashboard${current ? ' — ' + current.label : ''}`} data={data.dashboard} />
         </>
       )}
     </>
