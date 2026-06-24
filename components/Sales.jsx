@@ -65,34 +65,65 @@ export default function Sales({ data, prevData }) {
   let chartLabels, chartActual, chartLY;
   let tableHeaders, tableRows;
 
+  const showBudget = sub === 'all' && loc === 'all';
+
   if (sub === 'all') {
     chartTitle = `Revenue by Center — ${vl}${loc !== 'all' ? ' · ' + loc : ''} vs LY`;
     pieTitle   = `Actual Revenue Mix — ${vl}${loc !== 'all' ? ' · ' + loc : ''}`;
     tableTitle = `Revenue by Centre — ${loc !== 'all' ? loc : 'Consolidated'}`;
 
-    const displayRC = rc.filter(r => r.center !== 'Discounts/Refunds' && r.center !== 'Delivery Fee');
+    const displayRC = rc.filter(r => r.center !== 'Discounts/Refunds' && r.center !== 'Delivery Fee' && !r._isTotal);
     chartLabels = displayRC.map(r => r.center);
     chartActual = displayRC.map(r => r.actual);
     chartLY     = displayRC.map(r => r.ly);
 
-    const totalActual = rc.reduce((s, r) => s + (r.actual || 0), 0);
-    const totalLY     = rc.reduce((s, r) => s + (r.ly || 0), 0);
-    const totalVarD   = totalActual - totalLY;
-    // Any divide-by-zero (including 0/0) is undefined — render NA.
-    const totalVarP   = totalLY === 0 ? 'NA' : totalVarD / Math.abs(totalLY);
-    const rcWithTotal = [...rc, { center: 'Total', actual: totalActual, ly: totalLY, varD: totalVarD, varP: totalVarP, _isTotal: true }];
+    // QTD and YTD: the parser includes a Totals row — use it directly.
+    // Weekly / PTD: compute total from the data rows.
+    const totalsRow = rc.find(r => r._isTotal);
+    const dataRows  = rc.filter(r => !r._isTotal);
+    let rcWithTotal;
+    if (totalsRow) {
+      rcWithTotal = [...dataRows, { ...totalsRow, center: 'Total' }];
+    } else {
+      const totalActual  = rc.reduce((s, r) => s + (r.actual || 0), 0);
+      const totalLY      = rc.reduce((s, r) => s + (r.ly || 0), 0);
+      const totalVarD    = totalActual - totalLY;
+      const totalVarP    = totalLY === 0 ? 'NA' : totalVarD / Math.abs(totalLY);
+      const hasBudget    = rc.some(r => r.budget != null);
+      const totalBudget  = hasBudget ? rc.reduce((s, r) => s + (r.budget || 0), 0) : null;
+      const totalVarDBud = totalBudget != null ? totalActual - totalBudget : null;
+      const totalVarPBud = totalBudget != null && totalBudget !== 0 ? totalVarDBud / Math.abs(totalBudget) : null;
+      rcWithTotal = [...rc, { center: 'Total', actual: totalActual, ly: totalLY, varD: totalVarD, varP: totalVarP, budget: totalBudget, varDBud: totalVarDBud, varPBud: totalVarPBud, _isTotal: true }];
+    }
 
     tableHeaders = [
       { label: 'Revenue Centre' },
       { label: 'Actual', cls: 'right' },
       ...(isWeekly ? [{ label: <>Var % <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LW</>, cls: 'right' }] : []),
       { label: 'LY', cls: 'right' },
-      { label: 'Var $ vs LY', cls: 'right' },
-      { label: 'Var % vs LY', cls: 'right' },
+      { label: <>Var $ <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LY</>, cls: 'right' },
+      { label: <>Var % <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LY</>, cls: 'right' },
+      ...(showBudget ? [
+        { label: 'Budget', cls: 'right' },
+        { label: <>Var $ <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> Bud</>, cls: 'right' },
+        { label: <>Var % <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> Bud</>, cls: 'right' },
+      ] : []),
     ];
     tableRows = rcWithTotal.map(r => ({
       _cls: r._isTotal ? 'total-row' : '',
-      cells: [r.center, fmt$(r.actual), ...(isWeekly ? [lwCellFrom(prevRC, 'center', r.center, r.actual)] : []), fmt$(r.ly), fmt$(r.varD), fmtVarColored(r.varP)],
+      cells: [
+        r.center,
+        fmt$(r.actual),
+        ...(isWeekly ? [lwCellFrom(prevRC, 'center', r.center, r.actual)] : []),
+        fmt$(r.ly),
+        fmt$(r.varD),
+        fmtVarColored(r.varP),
+        ...(showBudget ? [
+          fmt$(r.budget),
+          fmt$(r.varDBud),
+          fmtVarColored(r.varPBud),
+        ] : []),
+      ],
     }));
   } else {
     const lbl = CAT_LABEL[sub];
@@ -151,8 +182,8 @@ export default function Sales({ data, prevData }) {
       { label: 'Actual', cls: 'right' },
       ...(isWeekly ? [{ label: <>Var % <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LW</>, cls: 'right' }] : []),
       { label: 'LY', cls: 'right' },
-      { label: 'Var $ vs LY', cls: 'right' },
-      { label: 'Var % vs LY', cls: 'right' },
+      { label: <>Var $ <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LY</>, cls: 'right' },
+      { label: <>Var % <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LY</>, cls: 'right' },
     ];
     const prevSub = prevSCAll ? prevSCAll[sub] : null;
     tableRows = tableData.map(r => ({
@@ -161,11 +192,16 @@ export default function Sales({ data, prevData }) {
     }));
   }
 
+  const chartBudget = showBudget
+    ? rc.filter(r => !r._isTotal && r.center !== 'Discounts/Refunds' && r.center !== 'Delivery Fee').map(r => r.budget ?? 0)
+    : null;
+
   const barData = {
     labels: chartLabels,
     datasets: [
-      { label: 'Actual 2026', data: chartActual, backgroundColor: '#9f7cef', borderRadius: 4 },
+      { label: 'Actual 2026', data: chartActual, backgroundColor: '#9f7cef',                borderRadius: 4 },
       { label: 'LY 2025',     data: chartLY,     backgroundColor: 'rgba(209,213,219,0.7)', borderRadius: 4 },
+      ...(chartBudget ? [{ label: 'Budget', data: chartBudget, backgroundColor: '#93c5fd', borderRadius: 4 }] : []),
     ],
   };
 

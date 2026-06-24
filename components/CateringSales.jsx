@@ -174,11 +174,43 @@ function SummaryByDirTable({ rows }) {
   );
 }
 
+function CustomerBreakdownTable({ rows }) {
+  const totalRow = rows.length > 1 ? {
+    label:   'Total',
+    total:   rows.reduce((s, r) => s + (r.total   ?? 0), 0),
+    repeat:  rows.reduce((s, r) => s + (r.repeat  ?? 0), 0),
+    newCust: rows.reduce((s, r) => s + (r.newCust ?? 0), 0),
+  } : null;
+
+  const allRows = totalRow ? [...rows, totalRow] : rows;
+
+  return (
+    <Table
+      headers={[
+        { label: 'Category' },
+        { label: 'Total', cls: 'right' },
+        { label: 'Repeat', cls: 'right' },
+        { label: 'New', cls: 'right' },
+      ]}
+      rows={allRows.map((r, i) => ({
+        _cls: i === allRows.length - 1 && totalRow ? 'total-row' : '',
+        cells: [
+          r.label,
+          r.total   ?? '-',
+          r.repeat  ?? '-',
+          r.newCust ?? '-',
+        ],
+      }))}
+    />
+  );
+}
+
 export default function CateringSales({ data }) {
   const [view, setView] = useState('outbound');
   const cs = data.catSales || {};
 
-  const summary = cs.summary || [];
+  const summary          = cs.summary || [];
+  const customerBreakdown = cs.customerBreakdown || [];
   const metrics = cs.outboundMetrics || [];
   const cols    = metrics[0]?._cols;
 
@@ -226,6 +258,12 @@ export default function CateringSales({ data }) {
           }))}
         />
       </div>
+      {customerBreakdown.length > 0 && (
+        <div className="table-card" style={{ marginBottom: 16 }}>
+          <div className="table-title">Catering — New vs Repeat Customers</div>
+          <CustomerBreakdownTable rows={customerBreakdown} />
+        </div>
+      )}
 
       {cols && (
         <div className="table-card" style={{ marginBottom: 20 }}>
@@ -266,10 +304,16 @@ export default function CateringSales({ data }) {
             <div className="table-title">Inbound Catering — Last Week Orders</div>
             <OrdersTable rows={ibOrders} />
           </div>
-          <div className="table-card" style={{ marginBottom: 20 }}>
+          <div className="table-card" style={{ marginBottom: 16 }}>
             <div className="table-title">Catering — Inbound Summary</div>
             <SummaryByDirTable rows={ibSum} />
           </div>
+          {customerBreakdown.some(r => /inbound/i.test(r.label)) && (
+            <div className="table-card" style={{ marginBottom: 20 }}>
+              <div className="table-title">Inbound — New vs Repeat Customers</div>
+              <CustomerBreakdownTable rows={customerBreakdown.filter(r => /inbound/i.test(r.label))} />
+            </div>
+          )}
         </>
       )}
 
