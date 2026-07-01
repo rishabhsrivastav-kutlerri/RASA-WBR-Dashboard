@@ -19,7 +19,7 @@ function openedCell(opened, delivered) {
   return `${fmtN(opened)} <span style="color:#9ca3af;font-size:11px">(${pct}%)</span>`;
 }
 
-// Renders a whole email table pulled directly from the sheet.
+// Renders a whole email table pulled directly from the sheet (loyalty format).
 // table = { headers: string[], rows: (string|number|null)[][] }
 function EmailTable({ table }) {
   if (!table || !table.headers.length || !table.rows.length) return null;
@@ -42,6 +42,43 @@ function EmailTable({ table }) {
           if (typeof v === 'number') return fmtN(v);
           return String(v);
         }),
+      }))}
+    />
+  );
+}
+
+// Renders catering email arrays (old object-per-row format from catering WBR parser).
+const CATERING_EMAIL_HEADERS = [
+  { label: 'Campaigns' },
+  { label: 'Sent',        cls: 'right' },
+  { label: 'Delivered',   cls: 'right' },
+  { label: 'Bounced',     cls: 'right' },
+  { label: 'Complaint',   cls: 'right' },
+  { label: 'Unsubscribe', cls: 'right' },
+  { label: 'Opened',      cls: 'right' },
+  { label: 'Clicked',     cls: 'right' },
+  { label: 'Ordered',     cls: 'right' },
+  { label: 'Revenue',     cls: 'right' },
+];
+function CateringEmailTable({ rows }) {
+  if (!rows || !rows.length) return null;
+  return (
+    <Table
+      headers={CATERING_EMAIL_HEADERS}
+      rows={rows.map(r => ({
+        _cls: /^total$/i.test(r.campaign) ? 'total-row' : '',
+        cells: [
+          r.campaign,
+          fmtN(r.sent),
+          fmtN(r.delivered),
+          fmtN(r.bounced),
+          fmtN(r.spam),
+          fmtN(r.unsub),
+          openedCell(r.opened || 0, r.delivered || 0),
+          fmtN(r.clicked),
+          fmtN(r.ordered),
+          fmt$(r.revenue),
+        ],
       }))}
     />
   );
@@ -203,7 +240,7 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
 
       <div className="table-card">
         <div className="table-title">Email Campaigns — Last {lbl} (Klaviyo)</div>
-        <EmailTable rows={emails} />
+        <CateringEmailTable rows={emails} />
       </div>
 
       <div className="table-card">
