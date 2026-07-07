@@ -333,12 +333,13 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
 
 // ─── Loyalty Marketing ──────────────────────────────────────────────────────
 function LoyaltyMarketing({ data, sub, setSub }) {
-  const [emailPeriod, setEmailPeriod] = useState('30d');
+  const [emailPeriod, setEmailPeriod] = useState('');
 
-  const lm   = data.loyaltyMarketing || data.marketing?.loyalty || {};
-  const sms  = lm.smsWoW  || [];
-  const e30  = lm.email30d || null;
-  const e90  = lm.email90d || null;
+  const lm  = data.loyaltyMarketing || data.marketing?.loyalty || {};
+  const sms = lm.smsWoW || [];
+  const e7  = lm.email7d  || null;
+  const e30 = lm.email30d || null;
+  const e90 = lm.email90d || null;
 
   const cols    = lm.smsCols || {};
   const isMoney = m => /Sales|Revenue|Costs|Value/i.test(m || '');
@@ -347,8 +348,19 @@ function LoyaltyMarketing({ data, sub, setSub }) {
   const attrSales     = findSms('Attributed Sales');
   const smsRoas       = findSms('SMS ROAS');
 
-  const activeEmail = emailPeriod === '30d' ? e30 : e90;
-  const activeLabel = emailPeriod === '30d' ? '30 Days' : '90 Days';
+  // Old format (pre-June-22) has email7d; new format (June-22+) has email90d.
+  const isOldFormat = !!e7;
+  const periods = isOldFormat
+    ? [{ id: '7d', label: '7 Days' }, { id: '30d', label: '30 Days' }]
+    : [{ id: '30d', label: '30 Days' }, { id: '90d', label: '90 Days' }];
+  const defaultId = periods[0].id;
+  // If the stored period isn't valid for this format (e.g. navigated between weeks), reset.
+  const activePeriodId = periods.find(p => p.id === emailPeriod) ? emailPeriod : defaultId;
+
+  const activeEmail = isOldFormat
+    ? (activePeriodId === '7d' ? e7 : e30)
+    : (activePeriodId === '30d' ? e30 : e90);
+  const activeLabel = periods.find(p => p.id === activePeriodId)?.label || '';
 
   // Pull the Total row from the dynamic table for KPI cards
   const activeTotalRow = activeEmail?.rows?.find(cells => /^total$/i.test(String(cells[0] ?? ''))) || null;
@@ -417,8 +429,8 @@ function LoyaltyMarketing({ data, sub, setSub }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div className="table-title" style={{ marginBottom: 0 }}>Email Campaigns — Last {activeLabel} ({activeEmail?.platform || 'Klaviyo'})</div>
           <div className="toggle-group">
-            {PERIODS.map(p => (
-              <button key={p.id} className={`toggle-btn${emailPeriod === p.id ? ' active' : ''}`} onClick={() => setEmailPeriod(p.id)}>
+            {periods.map(p => (
+              <button key={p.id} className={`toggle-btn${activePeriodId === p.id ? ' active' : ''}`} onClick={() => setEmailPeriod(p.id)}>
                 {p.label}
               </button>
             ))}
