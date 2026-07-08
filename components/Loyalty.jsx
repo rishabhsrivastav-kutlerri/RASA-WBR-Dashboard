@@ -158,15 +158,6 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
     }],
   };
 
-  const momData = mom.filter(r => r.metric !== 'Total Members in Loyalty' && !HIDDEN_MOM.test(r.metric || ''));
-  const momChart = {
-    labels: momData.map(r => r.metric),
-    datasets: [
-      { label: momH.mar, data: momData.map(r => r.mar), backgroundColor: '#9f7cef', borderRadius: 4 },
-      { label: momH.apr, data: momData.map(r => r.apr), backgroundColor: '#93c5fd', borderRadius: 4 },
-    ],
-  };
-
   // KPI card labels mirror the metric column heading in the input sheet
   // (Lifecycle - Table, col A for WoW and col L for MoM).
   const wowKPIs = (
@@ -222,7 +213,7 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
                 { label: wowH.var,  cls: 'right' },
                 { label: wowH.ytd,  cls: 'right' },
               ]}
-              rows={wowDisplay.map(r => ({ cells: [r.metric, fmtN(r.curr), fmtN(r.prev), fmtVar(r.var), fmtN(r.ytd)] }))}
+              rows={wow.map(r => ({ cells: [r.metric, fmtN(r.curr), fmtN(r.prev), fmtVar(r.var), fmtN(r.ytd)] }))}
             />
           </div>
           {showTrend && (signupsTrend.values.length > 0 || appDlTrend.values.length > 0) && (
@@ -253,7 +244,7 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
                 { label: momH.apr, cls: 'right' },
                 { label: momH.var, cls: 'right' },
               ]}
-              rows={momData.map(r => ({ cells: [r.metric, fmtN(r.mar), fmtN(r.apr), fmtVar(r.var)] }))}
+              rows={mom.map(r => ({ cells: [r.metric, fmtN(r.mar), fmtN(r.apr), fmtVar(r.var)] }))}
             />
           </div>
           {showTrend && (signupsTrend.values.length > 0 || appDlTrend.values.length > 0) && (
