@@ -29,14 +29,14 @@ function sumRC(data, view, openLocs) {
     }
   }
   if (!Object.keys(combined).length) return null;
-  return Object.entries(combined).map(([center, v]) => ({
-    center,
-    actual: v.actual,
-    ly: v.ly,
-    budget: v.hasBudget ? v.budget : null,
-    varD: v.actual - v.ly,
-    varP: v.ly !== 0 ? (v.actual - v.ly) / Math.abs(v.ly) : 'NA',
-  }));
+  return Object.entries(combined).map(([center, v]) => {
+    const budget  = v.hasBudget ? v.budget : null;
+    const varD    = v.actual - v.ly;
+    const varP    = v.ly !== 0 ? varD / Math.abs(v.ly) : 'NA';
+    const varDBud = budget != null ? v.actual - budget : null;
+    const varPBud = budget != null && budget !== 0 ? varDBud / Math.abs(budget) : null;
+    return { center, actual: v.actual, ly: v.ly, budget, varD, varP, varDBud, varPBud };
+  });
 }
 
 // Sum sub-category rows across multiple locations for open-only consolidated view.
@@ -94,12 +94,38 @@ export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSe
   // whatever the current location/sub-category selection resolves to, and
   // return a colored % vs the matching row (or '-' when no match / not weekly).
   const isWeekly = view === 'weekly';
-  const prevRC = isWeekly
-    ? (loc !== 'all' ? prevData?.revCenterByLoc?.[loc]?.weekly : prevData?.revCenter?.weekly)
-    : null;
-  const prevSCAll = isWeekly
-    ? (loc !== 'all' ? prevData?.subCatsByLoc?.[loc]?.weekly : prevData?.subCats?.weekly)
-    : null;
+
+  // When open-only is active and viewing all-locations consolidated, compute
+  // from per-location data to exclude closed locations.
+  const openLocs = openOnly && openLocSet?.size ? ALL_LOCS.filter(l => openLocSet.has(l)) : null;
+
+  // prevRC / prevSCAll: match whatever source the current rc/scView uses, so
+  // that per-row label lookups are comparing apples to apples.
+  const prevRC = (() => {
+    if (!isWeekly) return null;
+    if (loc !== 'all') return prevData?.revCenterByLoc?.[loc]?.weekly;
+    if (openLocs && prevData) {
+      const computed = sumRC(prevData, 'weekly', openLocs);
+      if (computed?.length) return computed;
+    }
+    return prevData?.revCenter?.weekly;
+  })();
+
+  const prevSCAll = (() => {
+    if (!isWeekly) return null;
+    if (loc !== 'all') return prevData?.subCatsByLoc?.[loc]?.weekly;
+    if (openLocs && prevData) {
+      const result = {};
+      let hasAny = false;
+      for (const s of ['delivery', 'pickup', 'offsites', 'catering']) {
+        const computed = sumSC(prevData, 'weekly', s, openLocs);
+        if (computed?.length) { result[s] = computed; hasAny = true; }
+      }
+      if (hasAny) return result;
+    }
+    return prevData?.subCats?.weekly;
+  })();
+
   const lwCellFrom = (prevArr, keyField, label, actual) => {
     if (!prevArr || !prevArr.length) return '-';
     const p = /^total/i.test(String(label))
@@ -107,10 +133,6 @@ export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSe
       : (prevArr.find(r => String(r[keyField]) === String(label)) || {}).actual;
     return (p != null && p !== 0) ? fmtVarColored((actual - p) / p) : '-';
   };
-
-  // When open-only is active and viewing all-locations consolidated, compute
-  // from per-location data to exclude closed locations.
-  const openLocs = openOnly && openLocSet?.size ? ALL_LOCS.filter(l => openLocSet.has(l)) : null;
 
   let rc;
   if (loc !== 'all' && data.revCenterByLoc && data.revCenterByLoc[loc]) {
