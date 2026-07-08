@@ -115,8 +115,9 @@ export default function Loyalty({ data, prevData }) {
 function Lifecycle({ L, period, setPeriod, showTrend }) {
   const wow = L.lifecycle?.wow || [];
   const mom = L.lifecycle?.mom || [];
-  const signupsTrend = L.lifecycleTrend?.signups || { weeks: [], values: [] };
-  const appDlTrend   = L.lifecycleTrend?.appDownloads || { weeks: [], values: [] };
+  const signupsTrend    = L.lifecycleTrend?.signups    || { weeks: [], values: [] };
+  const appDlTrend      = L.lifecycleTrend?.appDownloads || { weeks: [], values: [] };
+  const momTrend        = L.lifecycleMomTrend || { months: [], signups: [], appDownloads: [] };
   const wowH = L.lifecycle?.wowHeaders || { metric: 'Metric', curr: 'Current', prev: 'Previous', var: 'Var (%)', ytd: 'YTD' };
   const momH = L.lifecycle?.momHeaders || { metric: 'Metric', mar: 'Previous Month', apr: 'Latest Month', var: 'Var (%)' };
 
@@ -152,6 +153,24 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
     labels: appDlTrend.weeks,
     datasets: [{
       label: 'App Downloads', data: appDlTrend.values,
+      borderColor: '#93c5fd', backgroundColor: 'rgba(147,197,253,0.08)',
+      borderWidth: 2.5, pointBackgroundColor: '#93c5fd', pointRadius: 3,
+      fill: true, tension: 0.3,
+    }],
+  };
+  const momSignupsChart = {
+    labels: momTrend.months,
+    datasets: [{
+      label: 'Loyalty Signups', data: momTrend.signups,
+      borderColor: '#9f7cef', backgroundColor: 'rgba(159,124,239,0.08)',
+      borderWidth: 2.5, pointBackgroundColor: '#9f7cef', pointRadius: 3,
+      fill: true, tension: 0.3,
+    }],
+  };
+  const momAppDlChart = {
+    labels: momTrend.months,
+    datasets: [{
+      label: 'App Downloads', data: momTrend.appDownloads,
       borderColor: '#93c5fd', backgroundColor: 'rgba(147,197,253,0.08)',
       borderWidth: 2.5, pointBackgroundColor: '#93c5fd', pointRadius: 3,
       fill: true, tension: 0.3,
@@ -247,18 +266,18 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
               rows={mom.map(r => ({ cells: [r.metric, fmtN(r.mar), fmtN(r.apr), fmtVar(r.var)] }))}
             />
           </div>
-          {showTrend && (signupsTrend.values.length > 0 || appDlTrend.values.length > 0) && (
+          {momTrend.months.length > 0 && (
             <>
               <div className="chart-card" style={{ marginBottom: 16 }}>
-                <div className="chart-title">Loyalty Signups — Trend</div>
+                <div className="chart-title">Loyalty Signups — Monthly Trend</div>
                 <div style={{ height: 220 }}>
-                  <Line data={signupsChart} options={lineOpts} />
+                  <Line data={momSignupsChart} options={lineOpts} />
                 </div>
               </div>
               <div className="chart-card">
-                <div className="chart-title">App Downloads — Trend</div>
+                <div className="chart-title">App Downloads — Monthly Trend</div>
                 <div style={{ height: 220 }}>
-                  <Line data={appDlChart} options={lineOpts} />
+                  <Line data={momAppDlChart} options={lineOpts} />
                 </div>
               </div>
             </>
