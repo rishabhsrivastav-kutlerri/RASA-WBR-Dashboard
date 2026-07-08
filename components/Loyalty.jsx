@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import '@/lib/chartSetup';
-import { Bar, Doughnut } from 'react-chartjs-2';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import Table from './Table';
 import { fmt$, fmtN, fmtPct, fmtVar, CHART_COLORS } from '@/lib/fmt';
+import { weekInfoForLabel } from '@/lib/fiscalCalendar';
 
 const SECTIONS = [
   { id: 'lifecycle', label: 'Customer Lifecycle' },
@@ -87,6 +88,11 @@ export default function Loyalty({ data, prevData }) {
   const L    = data.loyalty     || {};
   const prevL = prevData?.loyalty || {};
 
+  // Loyalty Signups / App Downloads trendlines are new in the source workbook
+  // starting Period 7 Week 1 (Week of June 29) — do not show them before that.
+  const weekInfo = weekInfoForLabel(data.label);
+  const showTrend = !!weekInfo && weekInfo.period >= 7;
+
   return (
     <>
       <div className="toggle-group" style={{ marginBottom: 20 }}>
@@ -97,7 +103,7 @@ export default function Loyalty({ data, prevData }) {
         ))}
       </div>
 
-      {section === 'lifecycle' && <Lifecycle L={L} period={lcPeriod} setPeriod={setLcPeriod} />}
+      {section === 'lifecycle' && <Lifecycle L={L} period={lcPeriod} setPeriod={setLcPeriod} showTrend={showTrend} />}
       {section === 'sales'     && <Sales L={L} prevL={prevL} period={discPer} setPeriod={setDiscPer} />}
       {section === 'appweb'    && <AppWeb L={L} period={awPeriod} setPeriod={setAwPeriod} />}
       {section === 'delpick'   && <DelPick L={L} period={dpPeriod} setPeriod={setDpPeriod} />}
@@ -106,9 +112,11 @@ export default function Loyalty({ data, prevData }) {
 }
 
 // ─── Customer Lifecycle ─────────────────────────────────────────────────────
-function Lifecycle({ L, period, setPeriod }) {
+function Lifecycle({ L, period, setPeriod, showTrend }) {
   const wow = L.lifecycle?.wow || [];
   const mom = L.lifecycle?.mom || [];
+  const signupsTrend = L.lifecycleTrend?.signups || { weeks: [], values: [] };
+  const appDlTrend   = L.lifecycleTrend?.appDownloads || { weeks: [], values: [] };
   const wowH = L.lifecycle?.wowHeaders || { metric: 'Metric', curr: 'Current', prev: 'Previous', var: 'Var (%)', ytd: 'YTD' };
   const momH = L.lifecycle?.momHeaders || { metric: 'Metric', mar: 'Previous Month', apr: 'Latest Month', var: 'Var (%)' };
 
@@ -119,6 +127,34 @@ function Lifecycle({ L, period, setPeriod }) {
       { label: wowH.prev, data: wow.map(r => r.prev), backgroundColor: '#93c5fd', borderRadius: 4 },
     ],
   };
+  const lineOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { display: false } },
+      y: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+    },
+  };
+  const signupsChart = {
+    labels: signupsTrend.weeks,
+    datasets: [{
+      label: 'Loyalty Signups', data: signupsTrend.values,
+      borderColor: '#9f7cef', backgroundColor: 'rgba(159,124,239,0.08)',
+      borderWidth: 2.5, pointBackgroundColor: '#9f7cef', pointRadius: 3,
+      fill: true, tension: 0.3,
+    }],
+  };
+  const appDlChart = {
+    labels: appDlTrend.weeks,
+    datasets: [{
+      label: 'App Downloads', data: appDlTrend.values,
+      borderColor: '#93c5fd', backgroundColor: 'rgba(147,197,253,0.08)',
+      borderWidth: 2.5, pointBackgroundColor: '#93c5fd', pointRadius: 3,
+      fill: true, tension: 0.3,
+    }],
+  };
+
   const momData = mom.filter(r => r.metric !== 'Total Members in Loyalty');
   const momChart = {
     labels: momData.map(r => r.metric),
@@ -206,6 +242,23 @@ function Lifecycle({ L, period, setPeriod }) {
               ]}
               rows={mom.map(r => ({ cells: [r.metric, fmtN(r.mar), fmtN(r.apr), fmtVar(r.var)] }))}
             />
+          </div>
+        </>
+      )}
+
+      {showTrend && (signupsTrend.values.length > 0 || appDlTrend.values.length > 0) && (
+        <>
+          <div className="chart-card" style={{ marginBottom: 16 }}>
+            <div className="chart-title">Loyalty Signups — Trend</div>
+            <div style={{ height: 220 }}>
+              <Line data={signupsChart} options={lineOpts} />
+            </div>
+          </div>
+          <div className="chart-card">
+            <div className="chart-title">App Downloads — Trend</div>
+            <div style={{ height: 220 }}>
+              <Line data={appDlChart} options={lineOpts} />
+            </div>
           </div>
         </>
       )}

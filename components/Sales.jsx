@@ -299,7 +299,7 @@ export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSe
           {openLocSet && (
             <div className="toggle-group">
               <button className={`toggle-btn${!openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(false)}>All Locations</button>
-              <button className={`toggle-btn${openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(true)}>Open Only</button>
+              <button className={`toggle-btn${openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(true)}>Open Locations</button>
             </div>
           )}
           <div className="toggle-group">

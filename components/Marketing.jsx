@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Table from './Table';
 import { fmt$, fmtN, fmtPct, fmtVar } from '@/lib/fmt';
+import { weekInfoForLabel } from '@/lib/fiscalCalendar';
   
 const SUB = [
   { id: 'catering', label: 'Catering Marketing' },
@@ -78,6 +79,66 @@ function CateringEmailTable({ rows }) {
           fmtN(r.clicked),
           fmtN(r.ordered),
           fmt$(r.revenue),
+        ],
+      }))}
+    />
+  );
+}
+
+// Apollo-sourced email campaign table (Period 7 Week 1 onward only — see
+// showApolloEmail gate in CateringMarketing).
+const APOLLO_EMAIL_HEADERS = [
+  { label: 'Campaigns' },
+  { label: 'Sent',      cls: 'right' },
+  { label: 'Delivered', cls: 'right' },
+  { label: 'Bounced',   cls: 'right' },
+  { label: 'Opened',    cls: 'right' },
+  { label: 'Replied',   cls: 'right' },
+];
+function ApolloEmailTable({ rows }) {
+  if (!rows || !rows.length) return null;
+  return (
+    <Table
+      headers={APOLLO_EMAIL_HEADERS}
+      rows={rows.map(r => ({
+        _cls: /^total$/i.test(r.campaign) ? 'total-row' : '',
+        cells: [
+          r.campaign,
+          fmtN(r.sent),
+          fmtN(r.delivered),
+          fmtN(r.bounced),
+          openedCell(r.opened || 0, r.delivered || 0),
+          fmtN(r.replied),
+        ],
+      }))}
+    />
+  );
+}
+
+// SMS Campaigns table (Loyalty Marketing) — Period 7 Week 1 onward only, see
+// showSmsCampaigns gate in LoyaltyMarketing.
+const SMS_CAMPAIGN_HEADERS = [
+  { label: 'Campaigns' },
+  { label: 'Sends',  cls: 'right' },
+  { label: 'Clicks', cls: 'right' },
+  { label: 'Sales',  cls: 'right' },
+  { label: 'Cost',   cls: 'right' },
+  { label: 'ROAS',   cls: 'right' },
+];
+function SmsCampaignTable({ rows }) {
+  if (!rows || !rows.length) return null;
+  return (
+    <Table
+      headers={SMS_CAMPAIGN_HEADERS}
+      rows={rows.map(r => ({
+        _cls: /^total$/i.test(r.campaign) ? 'total-row' : '',
+        cells: [
+          r.campaign,
+          fmtN(r.sends),
+          fmtN(r.clicks),
+          fmt$(r.sales),
+          fmt$(r.cost),
+          r.roas != null ? `${r.roas.toFixed(1)}×` : '-',
         ],
       }))}
     />
@@ -162,6 +223,12 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
   const ezAds    = c.ezcaterAds    || [];
   const ezAds90  = c.ezcaterAds90d || [];
 
+  // Apollo email tables are new in the source workbook starting Period 7 Week 1
+  // (Week of June 29) — do not show them for any earlier week.
+  const weekInfo = weekInfoForLabel(data.label);
+  const showApolloEmail = !!weekInfo && weekInfo.period >= 7;
+  const apolloEmails = is30 ? (c.apolloEmail30d || []) : (c.apolloEmail90d || []);
+
   const tEmail = emails.find(r => /^total$/i.test(r.campaign)) || {};
   const tFlow  = flows.find(r => /^total$/i.test(r.flow)) || {};
 
@@ -242,6 +309,13 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
         <div className="table-title">Email Campaigns — Last {lbl} (Klaviyo)</div>
         <CateringEmailTable rows={emails} />
       </div>
+
+      {showApolloEmail && apolloEmails.length > 0 && (
+        <div className="table-card">
+          <div className="table-title">Email Campaigns — Last {lbl} (Apollo)</div>
+          <ApolloEmailTable rows={apolloEmails} />
+        </div>
+      )}
 
       <div className="table-card">
         <div className="table-title">Automated Flows — Last {lbl}</div>
@@ -334,9 +408,18 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
 // ─── Loyalty Marketing ──────────────────────────────────────────────────────
 function LoyaltyMarketing({ data, sub, setSub }) {
   const [emailPeriod, setEmailPeriod] = useState('');
+  const [smsCampPeriod, setSmsCampPeriod] = useState('7d');
 
   const lm  = data.loyaltyMarketing || data.marketing?.loyalty || {};
   const sms = lm.smsWoW || [];
+
+  // SMS Campaigns tables are new in the source workbook starting Period 7 Week 1
+  // (Week of June 29) — do not show them for any earlier week.
+  const weekInfo = weekInfoForLabel(data.label);
+  const showSmsCampaigns = !!weekInfo && weekInfo.period >= 7;
+  const smsCamp7d  = lm.smsCamp7d  || [];
+  const smsCamp30d = lm.smsCamp30d || [];
+  const activeSmsCamp = smsCampPeriod === '7d' ? smsCamp7d : smsCamp30d;
   const e7  = lm.email7d  || null;
   const e30 = lm.email30d || null;
   const e90 = lm.email90d || null;
@@ -424,6 +507,21 @@ function LoyaltyMarketing({ data, sub, setSub }) {
           }))}
         />
       </div>
+
+      {showSmsCampaigns && (smsCamp7d.length > 0 || smsCamp30d.length > 0) && (
+        <div className="table-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="table-title" style={{ marginBottom: 0 }}>
+              SMS Campaigns — Last {smsCampPeriod === '7d' ? '7 Days' : '30 Days'} (Open)
+            </div>
+            <div className="toggle-group">
+              <button className={`toggle-btn${smsCampPeriod === '7d' ? ' active' : ''}`} onClick={() => setSmsCampPeriod('7d')}>7 Days</button>
+              <button className={`toggle-btn${smsCampPeriod === '30d' ? ' active' : ''}`} onClick={() => setSmsCampPeriod('30d')}>30 Days</button>
+            </div>
+          </div>
+          <SmsCampaignTable rows={activeSmsCamp} />
+        </div>
+      )}
 
       <div className="table-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
