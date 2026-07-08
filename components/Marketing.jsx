@@ -420,6 +420,7 @@ function LoyaltyMarketing({ data, sub, setSub }) {
   const smsCamp7d  = lm.smsCamp7d  || [];
   const smsCamp30d = lm.smsCamp30d || [];
   const activeSmsCamp = smsCampPeriod === '7d' ? smsCamp7d : smsCamp30d;
+
   const e7  = lm.email7d  || null;
   const e30 = lm.email30d || null;
   const e90 = lm.email90d || null;

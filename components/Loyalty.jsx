@@ -120,11 +120,14 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
   const wowH = L.lifecycle?.wowHeaders || { metric: 'Metric', curr: 'Current', prev: 'Previous', var: 'Var (%)', ytd: 'YTD' };
   const momH = L.lifecycle?.momHeaders || { metric: 'Metric', mar: 'Previous Month', apr: 'Latest Month', var: 'Var (%)' };
 
+  const HIDDEN_MOM = /^(Loyalty Signups|App Downloads)$/i;
+  const wowDisplay = wow.filter(r => !HIDDEN_MOM.test(r.metric || ''));
+
   const wowChart = {
-    labels: wow.map(r => r.metric),
+    labels: wowDisplay.map(r => r.metric),
     datasets: [
-      { label: wowH.curr, data: wow.map(r => r.curr), backgroundColor: '#9f7cef', borderRadius: 4 },
-      { label: wowH.prev, data: wow.map(r => r.prev), backgroundColor: '#93c5fd', borderRadius: 4 },
+      { label: wowH.curr, data: wowDisplay.map(r => r.curr), backgroundColor: '#9f7cef', borderRadius: 4 },
+      { label: wowH.prev, data: wowDisplay.map(r => r.prev), backgroundColor: '#93c5fd', borderRadius: 4 },
     ],
   };
   const lineOpts = {
@@ -155,7 +158,7 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
     }],
   };
 
-  const momData = mom.filter(r => r.metric !== 'Total Members in Loyalty');
+  const momData = mom.filter(r => r.metric !== 'Total Members in Loyalty' && !HIDDEN_MOM.test(r.metric || ''));
   const momChart = {
     labels: momData.map(r => r.metric),
     datasets: [
@@ -219,18 +222,28 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
                 { label: wowH.var,  cls: 'right' },
                 { label: wowH.ytd,  cls: 'right' },
               ]}
-              rows={wow.map(r => ({ cells: [r.metric, fmtN(r.curr), fmtN(r.prev), fmtVar(r.var), fmtN(r.ytd)] }))}
+              rows={wowDisplay.map(r => ({ cells: [r.metric, fmtN(r.curr), fmtN(r.prev), fmtVar(r.var), fmtN(r.ytd)] }))}
             />
           </div>
+          {showTrend && (signupsTrend.values.length > 0 || appDlTrend.values.length > 0) && (
+            <>
+              <div className="chart-card" style={{ marginBottom: 16 }}>
+                <div className="chart-title">Loyalty Signups — Trend</div>
+                <div style={{ height: 220 }}>
+                  <Line data={signupsChart} options={lineOpts} />
+                </div>
+              </div>
+              <div className="chart-card">
+                <div className="chart-title">App Downloads — Trend</div>
+                <div style={{ height: 220 }}>
+                  <Line data={appDlChart} options={lineOpts} />
+                </div>
+              </div>
+            </>
+          )}
         </>
       ) : (
         <>
-          <div className="chart-card" style={{ marginBottom: 16 }}>
-            <div className="chart-title">Customer Lifecycle - MoM</div>
-            <div style={{ height: 300 }}>
-              <Bar data={momChart} options={grpBarOpts} />
-            </div>
-          </div>
           <div className="table-card">
             <div className="table-title">Customer Lifecycle - MoM</div>
             <Table
@@ -240,26 +253,25 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
                 { label: momH.apr, cls: 'right' },
                 { label: momH.var, cls: 'right' },
               ]}
-              rows={mom.map(r => ({ cells: [r.metric, fmtN(r.mar), fmtN(r.apr), fmtVar(r.var)] }))}
+              rows={momData.map(r => ({ cells: [r.metric, fmtN(r.mar), fmtN(r.apr), fmtVar(r.var)] }))}
             />
           </div>
-        </>
-      )}
-
-      {showTrend && (signupsTrend.values.length > 0 || appDlTrend.values.length > 0) && (
-        <>
-          <div className="chart-card" style={{ marginBottom: 16 }}>
-            <div className="chart-title">Loyalty Signups — Trend</div>
-            <div style={{ height: 220 }}>
-              <Line data={signupsChart} options={lineOpts} />
-            </div>
-          </div>
-          <div className="chart-card">
-            <div className="chart-title">App Downloads — Trend</div>
-            <div style={{ height: 220 }}>
-              <Line data={appDlChart} options={lineOpts} />
-            </div>
-          </div>
+          {showTrend && (signupsTrend.values.length > 0 || appDlTrend.values.length > 0) && (
+            <>
+              <div className="chart-card" style={{ marginBottom: 16 }}>
+                <div className="chart-title">Loyalty Signups — Trend</div>
+                <div style={{ height: 220 }}>
+                  <Line data={signupsChart} options={lineOpts} />
+                </div>
+              </div>
+              <div className="chart-card">
+                <div className="chart-title">App Downloads — Trend</div>
+                <div style={{ height: 220 }}>
+                  <Line data={appDlChart} options={lineOpts} />
+                </div>
+              </div>
+            </>
+          )}
         </>
       )}
     </>
