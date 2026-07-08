@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchSheets, fetchWeekData, getStoredUser } from '@/lib/api';
+import { fetchSheets, fetchWeekData, fetchLocations, getStoredUser } from '@/lib/api';
 import Snapshot from '@/components/Snapshot';
 import Sales from '@/components/Sales';
 import Costs from '@/components/Costs';
@@ -40,6 +40,8 @@ export default function DashboardPage() {
   const [tab, setTab] = useState('snapshot');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [locations, setLocations] = useState(null);
+  const [openOnly, setOpenOnly]   = useState(false);
 
   // Auth gate: redirect to /login if no token in localStorage.
   useEffect(() => {
@@ -50,6 +52,9 @@ export default function DashboardPage() {
       const u = getStoredUser();
       if (u?.role) setUserRole(u.role);
       setAuthChecked(true);
+      fetchLocations()
+        .then(d => setLocations(d.locations))
+        .catch(() => {}); // non-fatal: falls back to showing all locations
     }
   }, [router]);
 
@@ -156,6 +161,11 @@ export default function DashboardPage() {
     );
   }
 
+  // Derive open location Set from fetched config. Falls back to showing all when not yet loaded.
+  const openLocSet = locations
+    ? new Set(Object.entries(locations).filter(([, v]) => v.open).map(([k]) => k))
+    : null;
+
   // Period / Week filters derived from the enriched sheet list. `week` (the
   // selected folder) stays the single source of truth that drives data loading.
   const current = sheets.find(s => s.week === week);
@@ -225,8 +235,8 @@ export default function DashboardPage() {
         ) : (
           <>
             {loading && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)' }}><div className="spinner" style={{ margin: '0 auto 10px' }} />Loading week…</div>}
-            {!loading && tab === 'snapshot'      && <Snapshot data={data} prevData={prevData} />}
-            {!loading && tab === 'sales'         && <Sales data={data} prevData={prevData} />}
+            {!loading && tab === 'snapshot'      && <Snapshot data={data} prevData={prevData} openOnly={openOnly} setOpenOnly={setOpenOnly} openLocSet={openLocSet} />}
+            {!loading && tab === 'sales'         && <Sales data={data} prevData={prevData} openOnly={openOnly} setOpenOnly={setOpenOnly} openLocSet={openLocSet} />}
             {!loading && tab === 'costs'         && <Costs data={data} />}
             {!loading && tab === 'reviews'       && <Reviews data={data} prevData={prevData} />}
             {!loading && tab === 'thirdparty'    && <ThirdParty data={data} prevData={prevData} />}

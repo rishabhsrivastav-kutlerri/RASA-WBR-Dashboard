@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import '@/lib/chartSetup';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import Table from './Table';
@@ -13,7 +13,55 @@ const VIEWS = [
   { id: 'ytd',    label: 'Year to Date' },
 ];
 
-const LOC_OPTIONS = ['Ballpark', 'Mosaic', 'MVT', 'National Landing', 'Rockville'];
+const ALL_LOCS = ['Ballpark', 'Mosaic', 'MVT', 'National Landing', 'Rockville'];
+
+// Sum revenue-centre rows across multiple locations for open-only consolidated view.
+function sumRC(data, view, openLocs) {
+  const combined = {};
+  for (const l of openLocs) {
+    const locRC = data.revCenterByLoc?.[l]?.[view] || data.revCenterByLoc?.[l]?.weekly || [];
+    for (const row of locRC) {
+      if (row._isTotal) continue;
+      if (!combined[row.center]) combined[row.center] = { actual: 0, ly: 0, budget: 0, hasBudget: false };
+      combined[row.center].actual += row.actual || 0;
+      combined[row.center].ly     += row.ly     || 0;
+      if (row.budget != null) { combined[row.center].budget += row.budget; combined[row.center].hasBudget = true; }
+    }
+  }
+  if (!Object.keys(combined).length) return null;
+  return Object.entries(combined).map(([center, v]) => ({
+    center,
+    actual: v.actual,
+    ly: v.ly,
+    budget: v.hasBudget ? v.budget : null,
+    varD: v.actual - v.ly,
+    varP: v.ly !== 0 ? (v.actual - v.ly) / Math.abs(v.ly) : 'NA',
+  }));
+}
+
+// Sum sub-category rows across multiple locations for open-only consolidated view.
+function sumSC(data, viewKey, sub, openLocs) {
+  const combined = {};
+  let labelKey = 'sub';
+  for (const l of openLocs) {
+    const rows = data.subCatsByLoc?.[l]?.[viewKey]?.[sub] || data.subCatsByLoc?.[l]?.weekly?.[sub] || [];
+    if (rows.length && rows[0].cat != null && rows[0].sub == null) labelKey = 'cat';
+    for (const row of rows) {
+      const key = String(row.sub ?? row.cat ?? '');
+      if (!combined[key]) combined[key] = { actual: 0, ly: 0, lk: labelKey };
+      combined[key].actual += row.actual || 0;
+      combined[key].ly     += row.ly     || 0;
+    }
+  }
+  if (!Object.keys(combined).length) return null;
+  return Object.entries(combined).map(([label, v]) => ({
+    [v.lk]: label,
+    actual: v.actual,
+    ly: v.ly,
+    varD: v.actual - v.ly,
+    varP: v.ly !== 0 ? (v.actual - v.ly) / Math.abs(v.ly) : 'NA',
+  }));
+}
 
 const SUB_OPTIONS = [
   { id: 'all',      label: 'All (Revenue by Centre)' },
@@ -26,13 +74,21 @@ const SUB_OPTIONS = [
 const CAT_LABEL = { delivery: 'Delivery', pickup: 'Pickup (Takeout)', catering: 'Catering', offsites: 'Offsites' };
 const PIE_COLORS = ['#9f7cef', '#f9a8d4', '#86efac', '#fcd34d', '#93c5fd', '#f9a8a8'];
 
-export default function Sales({ data, prevData }) {
+export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSet }) {
   const [view, setView] = useState('weekly');
   const [sub, setSub]   = useState('all');
   const [loc, setLoc]   = useState('all');
 
   const views = data.qtdAvailable ? VIEWS : VIEWS.filter(v => v.id !== 'qtd');
   const vl = view === 'weekly' ? 'Weekly' : view === 'ptd' ? 'PTD' : view === 'qtd' ? 'QTD' : 'YTD';
+
+  // Filter available location options; reset to 'all' if current loc becomes unavailable.
+  const locOptions = openOnly && openLocSet?.size ? ALL_LOCS.filter(l => openLocSet.has(l)) : ALL_LOCS;
+  useEffect(() => {
+    if (openOnly && loc !== 'all' && openLocSet && !openLocSet.has(loc)) {
+      setLoc('all');
+    }
+  }, [openOnly, openLocSet, loc]);
 
   // Var to Last Week — weekly view only. Pull the previous week's actuals for
   // whatever the current location/sub-category selection resolves to, and
@@ -52,14 +108,30 @@ export default function Sales({ data, prevData }) {
     return (p != null && p !== 0) ? fmtVarColored((actual - p) / p) : '-';
   };
 
+  // When open-only is active and viewing all-locations consolidated, compute
+  // from per-location data to exclude closed locations.
+  const openLocs = openOnly && openLocSet?.size ? ALL_LOCS.filter(l => openLocSet.has(l)) : null;
+
   let rc;
   if (loc !== 'all' && data.revCenterByLoc && data.revCenterByLoc[loc]) {
     rc = data.revCenterByLoc[loc][view] || data.revCenterByLoc[loc].weekly || [];
+  } else if (openLocs && data.revCenterByLoc) {
+    rc = sumRC(data, view, openLocs) || (data.revCenter && (data.revCenter[view] || data.revCenter.weekly)) || [];
   } else {
     rc = (data.revCenter && (data.revCenter[view] || data.revCenter.weekly)) || [];
   }
 
-  const scView = (data.subCats && (data.subCats[view] || data.subCats.weekly)) || {};
+  const scView = (() => {
+    if (openLocs && loc === 'all') {
+      const viewKey = view === 'ytd' ? 'ytd' : view === 'ptd' ? 'ptd' : view === 'qtd' ? 'qtd' : 'weekly';
+      const result = {};
+      for (const s of ['delivery', 'pickup', 'offsites', 'catering']) {
+        result[s] = sumSC(data, viewKey, s, openLocs) || [];
+      }
+      return result;
+    }
+    return (data.subCats && (data.subCats[view] || data.subCats.weekly)) || {};
+  })();
 
   let chartTitle, pieTitle, tableTitle;
   let chartLabels, chartActual, chartLY;
@@ -224,6 +296,12 @@ export default function Sales({ data, prevData }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Revenue</span>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {openLocSet && (
+            <div className="toggle-group">
+              <button className={`toggle-btn${!openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(false)}>All Locations</button>
+              <button className={`toggle-btn${openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(true)}>Open Only</button>
+            </div>
+          )}
           <div className="toggle-group">
             {views.map(v => (
               <button key={v.id} className={`toggle-btn${view === v.id ? ' active' : ''}`} onClick={() => setView(v.id)}>{v.label}</button>
@@ -235,7 +313,7 @@ export default function Sales({ data, prevData }) {
             style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#1a1f2e', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: "'Montserrat',sans-serif" }}
           >
             <option value="all">All Locations</option>
-            {LOC_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
+            {locOptions.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
         </div>
       </div>

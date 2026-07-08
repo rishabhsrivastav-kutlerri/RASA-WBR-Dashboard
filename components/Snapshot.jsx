@@ -13,7 +13,7 @@ const VIEWS = [
   { id: 'ytd',    label: 'Year to Date' },
 ];
 
-export default function Snapshot({ data, prevData }) {
+export default function Snapshot({ data, prevData, openOnly, setOpenOnly, openLocSet }) {
   const [view, setView] = useState('weekly');
   // QTD only exists in workbooks that ship the QTD sheets (newer weeks).
   const views = data.qtdAvailable ? VIEWS : VIEWS.filter(v => v.id !== 'qtd');
@@ -21,6 +21,20 @@ export default function Snapshot({ data, prevData }) {
   const total = d.find(r => /^totals?$/i.test(r.loc)) || d[d.length - 1] || {};
   const rows = d.filter(r => !/^totals?$/i.test(r.loc));
   const vl = view === 'weekly' ? 'Weekly' : view === 'ptd' ? 'PTD' : view === 'qtd' ? 'QTD' : 'YTD';
+
+  // Filter to open locations when openOnly is active.
+  const canFilter = openOnly && openLocSet?.size > 0;
+  const displayRows = canFilter ? rows.filter(r => openLocSet.has(r.loc)) : rows;
+  const displayTotal = canFilter && displayRows.length
+    ? (() => {
+        const actual = displayRows.reduce((s, r) => s + (r.actual || 0), 0);
+        const ly     = displayRows.reduce((s, r) => s + (r.ly     || 0), 0);
+        const budget = displayRows.reduce((s, r) => s + (r.budget || 0), 0);
+        const varLY  = ly     !== 0 ? (actual - ly)     / Math.abs(ly)     : 0;
+        const varBud = budget !== 0 ? (actual - budget) / Math.abs(budget) : 0;
+        return { loc: 'Totals', actual, ly, budget, varLY, varBud };
+      })()
+    : total;
 
   // Var to Last Week — only meaningful for the weekly view; compare each
   // location's actual to the previous week's actual.
@@ -34,22 +48,22 @@ export default function Snapshot({ data, prevData }) {
     const v = varLW(r.loc, r.actual);
     return v == null ? '-' : fmtVarColored(v);
   };
-  const totalLW = varLW(total.loc || 'Totals', total.actual || 0);
+  const totalLW = varLW(displayTotal.loc || 'Totals', displayTotal.actual || 0);
 
   const salesChart = {
-    labels: rows.map(r => r.loc),
+    labels: displayRows.map(r => r.loc),
     datasets: [
-      { label: 'Actual', data: rows.map(r => r.actual), backgroundColor: '#9f7cef',                borderRadius: 4 },
-      { label: 'LY',     data: rows.map(r => r.ly),     backgroundColor: 'rgba(209,213,219,0.7)',  borderRadius: 4 },
-      { label: 'Budget', data: rows.map(r => r.budget), backgroundColor: '#93c5fd',                borderRadius: 4 },
+      { label: 'Actual', data: displayRows.map(r => r.actual), backgroundColor: '#9f7cef',                borderRadius: 4 },
+      { label: 'LY',     data: displayRows.map(r => r.ly),     backgroundColor: 'rgba(209,213,219,0.7)',  borderRadius: 4 },
+      { label: 'Budget', data: displayRows.map(r => r.budget), backgroundColor: '#93c5fd',                borderRadius: 4 },
     ],
   };
   const varChart = {
-    labels: rows.map(r => r.loc),
+    labels: displayRows.map(r => r.loc),
     datasets: [{
       label: 'Var % vs LY',
-      data: rows.map(r => +(r.varLY * 100).toFixed(1)),
-      backgroundColor: rows.map(r => r.varLY >= 0 ? '#b99af3' : 'rgba(220,38,38,0.75)'),
+      data: displayRows.map(r => +(r.varLY * 100).toFixed(1)),
+      backgroundColor: displayRows.map(r => r.varLY >= 0 ? '#b99af3' : 'rgba(220,38,38,0.75)'),
       borderRadius: 4,
     }],
   };
@@ -58,32 +72,40 @@ export default function Snapshot({ data, prevData }) {
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Results</span>
-        <div className="toggle-group">
-          {views.map(v => (
-            <button key={v.id} className={`toggle-btn${view === v.id ? ' active' : ''}`} onClick={() => setView(v.id)}>{v.label}</button>
-          ))}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {openLocSet && (
+            <div className="toggle-group">
+              <button className={`toggle-btn${!openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(false)}>All Locations</button>
+              <button className={`toggle-btn${openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(true)}>Open Only</button>
+            </div>
+          )}
+          <div className="toggle-group">
+            {views.map(v => (
+              <button key={v.id} className={`toggle-btn${view === v.id ? ' active' : ''}`} onClick={() => setView(v.id)}>{v.label}</button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="kpi-row">
         <div className="kpi-card">
           <div className="kpi-label">Total Sales ({vl})</div>
-          <div className="kpi-value">{fmt$(total.actual)}</div>
+          <div className="kpi-value">{fmt$(displayTotal.actual)}</div>
           {totalLW != null && (
             <div className={`kpi-change ${totalLW >= 0 ? 'pos' : 'neg'}`}>Var%: {fmtVar(totalLW)} vs LW</div>
           )}
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Last Year (LY)</div>
-          <div className="kpi-value">{fmt$(total.ly)}</div>
-          <div className={`kpi-change ${(total.actual||0)-(total.ly||0) >= 0 ? 'pos' : 'neg'}`}>Var $: {fmt$((total.actual || 0) - (total.ly || 0))}</div>
-          <div className={`kpi-change ${(total.varLY||0) >= 0 ? 'pos' : 'neg'}`}>Var%: {fmtVar(total.varLY)}</div>
+          <div className="kpi-value">{fmt$(displayTotal.ly)}</div>
+          <div className={`kpi-change ${(displayTotal.actual||0)-(displayTotal.ly||0) >= 0 ? 'pos' : 'neg'}`}>Var $: {fmt$((displayTotal.actual || 0) - (displayTotal.ly || 0))}</div>
+          <div className={`kpi-change ${(displayTotal.varLY||0) >= 0 ? 'pos' : 'neg'}`}>Var%: {fmtVar(displayTotal.varLY)}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Budget (BUD)</div>
-          <div className="kpi-value">{fmt$(total.budget)}</div>
-          <div className={`kpi-change ${(total.actual||0)-(total.budget||0) >= 0 ? 'pos' : 'neg'}`}>Var $: {fmt$((total.actual || 0) - (total.budget || 0))}</div>
-          <div className={`kpi-change ${(total.varBud||0) >= 0 ? 'pos' : 'neg'}`}>Var%: {fmtVar(total.varBud)}</div>
+          <div className="kpi-value">{fmt$(displayTotal.budget)}</div>
+          <div className={`kpi-change ${(displayTotal.actual||0)-(displayTotal.budget||0) >= 0 ? 'pos' : 'neg'}`}>Var $: {fmt$((displayTotal.actual || 0) - (displayTotal.budget || 0))}</div>
+          <div className={`kpi-change ${(displayTotal.varBud||0) >= 0 ? 'pos' : 'neg'}`}>Var%: {fmtVar(displayTotal.varBud)}</div>
         </div>
       </div>
 
@@ -120,7 +142,7 @@ export default function Snapshot({ data, prevData }) {
             { label: <>Var <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> LY</>, cls: 'right' },
             { label: <>Var <span style={{ textTransform: 'none', fontSize: '0.85em' }}>vs</span> Bud</>, cls: 'right' },
           ]}
-          rows={d.map(r => ({
+          rows={[...displayRows, displayTotal].map(r => ({
             _cls: /^totals?$/i.test(r.loc) ? 'total-row' : '',
             cells: [r.loc, fmt$(r.actual), ...(view === 'weekly' ? [lwCell(r)] : []), fmt$(r.ly), fmt$(r.budget), fmtVarColored(r.varLY), fmtVarColored(r.varBud)],
           }))}

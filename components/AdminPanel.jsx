@@ -12,6 +12,9 @@ import {
   fetchAdminUsers,
   adminSaveUser,
   adminDeleteUser,
+  fetchAdminLocations,
+  adminSaveLocation,
+  adminDeleteLocation,
 } from '@/lib/api';
 
 const FILE_TYPES = ['wbr', 'loyalty', 'catering'];
@@ -189,6 +192,56 @@ function UserModal({ prefillEmail, prefillRole, isEdit, onClose, onDone }) {
   );
 }
 
+// ── Add Location modal ────────────────────────────────────────────────────────
+
+function AddLocationModal({ onClose, onDone }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg]   = useState('');
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true); setMsg('');
+    try {
+      await adminSaveLocation(name.trim(), true);
+      setMsg('Location added!');
+      setTimeout(() => { onDone(); onClose(); }, 800);
+    } catch (err) {
+      setMsg('Error: ' + err.message);
+      setBusy(false);
+    }
+  }
+
+  const inp = { background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
+  const lbl = { fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 4 };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'white', borderRadius: 16, padding: 28, width: 380, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', fontFamily: "'Montserrat',sans-serif" }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 18 }}>Add New Location</div>
+        <form onSubmit={submit} style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <label style={lbl}>Location Name</label>
+            <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Georgetown" autoFocus />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button type="submit" disabled={busy || !name.trim()}
+              style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {busy ? 'Adding…' : 'Add Location'}
+            </button>
+            <button type="button" onClick={onClose}
+              style={{ background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              Cancel
+            </button>
+            {msg && <span style={{ fontSize: 13, color: msg.startsWith('Error') ? '#dc2626' : '#15803d' }}>{msg}</span>}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function AdminPanel() {
@@ -212,6 +265,12 @@ export default function AdminPanel() {
   const [usersErr,   setUsersErr]   = useState('');
   const [userModal,  setUserModal]  = useState(null); // null | { email?, role?, isEdit }
 
+  // Locations section
+  const [locations,    setLocations]    = useState(null);
+  const [locsErr,      setLocsErr]      = useState('');
+  const [locModal,     setLocModal]     = useState(false);
+  const [locBusy,      setLocBusy]      = useState({});
+
   const load = () => {
     setLoading(true);
     fetchAdminStatus()
@@ -226,6 +285,14 @@ export default function AdminPanel() {
       .catch(e => setUsersErr(e.message));
   };
   useEffect(() => { if (section === 'users') loadUsers(); }, [section]);
+
+  const loadLocations = () => {
+    setLocsErr('');
+    fetchAdminLocations()
+      .then(d => setLocations(d.locations))
+      .catch(e => setLocsErr(e.message));
+  };
+  useEffect(() => { if (section === 'locations') loadLocations(); }, [section]);
 
   async function delData(weekName, ft) {
     if (!confirm(`Delete ${ft} file for "${weekName}"? This commits the deletion to GitHub.`)) return;
@@ -284,10 +351,16 @@ export default function AdminPanel() {
           onDone={loadUsers}
         />
       )}
+      {locModal && (
+        <AddLocationModal
+          onClose={() => setLocModal(false)}
+          onDone={loadLocations}
+        />
+      )}
 
       {/* Section tabs */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        {[['data', 'WBR Data'], ['scorecard', 'Scorecard'], ['users', 'Users']].map(([s, label]) => (
+        {[['data', 'WBR Data'], ['scorecard', 'Scorecard'], ['users', 'Users'], ['locations', 'Locations']].map(([s, label]) => (
           <button key={s} onClick={() => setSection(s)} style={btn(section === s ? '#7c3aed' : '#e5e7eb')}>
             {label}
           </button>
@@ -302,7 +375,12 @@ export default function AdminPanel() {
             + Add User
           </button>
         )}
-        <button onClick={section === 'users' ? loadUsers : load} style={btn('#6b7280')}>Refresh</button>
+        {section === 'locations' && (
+          <button onClick={() => setLocModal(true)} style={{ ...btn('#059669'), marginLeft: 'auto' }}>
+            + Add Location
+          </button>
+        )}
+        <button onClick={section === 'users' ? loadUsers : section === 'locations' ? loadLocations : load} style={btn('#6b7280')}>Refresh</button>
       </div>
 
       {loading && <div style={{ color: 'var(--muted)', padding: 20 }}>Loading…</div>}
@@ -415,6 +493,87 @@ export default function AdminPanel() {
               </div>
             );
           })}
+        </>
+      )}
+
+      {/* ── LOCATIONS SECTION ─────────────────────────────────────────────── */}
+      {section === 'locations' && (
+        <>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 14, alignItems: 'center', fontSize: 12, color: 'var(--muted)' }}>
+            Toggle locations open/closed. Closed locations are excluded when "Open Only" is selected on the dashboard.
+          </div>
+
+          {locsErr && <div style={{ color: '#dc2626', padding: 10, marginBottom: 10 }}>{locsErr}</div>}
+
+          {!locations ? (
+            <div style={{ color: 'var(--muted)', padding: 20 }}>Loading locations…</div>
+          ) : (
+            <div style={card}>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>
+                All Locations ({Object.keys(locations).length})
+              </div>
+              {!Object.keys(locations).length ? (
+                <div style={{ color: 'var(--muted)', fontSize: 13 }}>No locations found. Add one above.</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                      {['Location', 'Status', 'Actions'].map(h => (
+                        <th key={h} style={{ textAlign: 'left', padding: '6px 10px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(locations).map(([name, cfg]) => (
+                      <tr key={name} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '10px 10px', fontWeight: 600 }}>{name}</td>
+                        <td style={{ padding: '10px 10px' }}>
+                          <span style={{
+                            background: cfg.open ? '#dcfce7' : '#fee2e2',
+                            color: cfg.open ? '#15803d' : '#dc2626',
+                            fontSize: 11, fontWeight: 700, borderRadius: 4, padding: '2px 8px',
+                          }}>
+                            {cfg.open ? 'Open' : 'Closed'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 10px' }}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              disabled={!!locBusy[name]}
+                              onClick={async () => {
+                                setLocBusy(b => ({ ...b, [name]: true }));
+                                try {
+                                  await adminSaveLocation(name, !cfg.open);
+                                  await loadLocations();
+                                } catch (err) { alert('Error: ' + err.message); }
+                                setLocBusy(b => ({ ...b, [name]: false }));
+                              }}
+                              style={{ background: cfg.open ? '#dc2626' : '#15803d', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: locBusy[name] ? 0.6 : 1 }}>
+                              {locBusy[name] ? '…' : cfg.open ? 'Mark Closed' : 'Mark Open'}
+                            </button>
+                            <button
+                              disabled={!!locBusy[name]}
+                              onClick={async () => {
+                                if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+                                setLocBusy(b => ({ ...b, [name]: true }));
+                                try {
+                                  await adminDeleteLocation(name);
+                                  await loadLocations();
+                                } catch (err) { alert('Error: ' + err.message); }
+                                setLocBusy(b => ({ ...b, [name]: false }));
+                              }}
+                              style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: locBusy[name] ? 0.6 : 1 }}>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </>
       )}
 
