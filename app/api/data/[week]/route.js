@@ -41,11 +41,15 @@ export async function GET(request, { params }) {
     // Clear stale files before writing fresh ones.
     for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
 
-    for (const [, filePath] of Object.entries(paths)) {
-      if (!filePath) continue;
-      const buf = await downloadFileAtPath(filePath);
-      if (buf) fs.writeFileSync(path.join(tmpDir, path.basename(filePath)), buf);
-    }
+    // Download all xlsx files in parallel instead of sequentially.
+    await Promise.all(
+      Object.values(paths)
+        .filter(Boolean)
+        .map(async filePath => {
+          const buf = await downloadFileAtPath(filePath);
+          if (buf) fs.writeFileSync(path.join(tmpDir, path.basename(filePath)), buf);
+        })
+    );
 
     const data = parseWeekFolder(tmpDir);
     cache.set(cacheKey, data);
