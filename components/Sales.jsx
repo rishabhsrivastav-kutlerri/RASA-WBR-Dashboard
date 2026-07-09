@@ -128,8 +128,11 @@ export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSe
 
   const lwCellFrom = (prevArr, keyField, label, actual) => {
     if (!prevArr || !prevArr.length) return '-';
+    // Sub-category source arrays (e.g. subCats.weekly.catering) already include
+    // their own pre-baked Total row — exclude it here or the reduce below
+    // double-counts the total into the sum of its own parts.
     const p = /^total/i.test(String(label))
-      ? prevArr.reduce((s, r) => s + (r.actual || 0), 0)
+      ? prevArr.filter(r => !r.isTotal && !/^total/i.test(String(r[keyField] ?? ''))).reduce((s, r) => s + (r.actual || 0), 0)
       : (prevArr.find(r => String(r[keyField]) === String(label)) || {}).actual;
     return (p != null && p !== 0) ? fmtVarColored((actual - p) / p) : '-';
   };
