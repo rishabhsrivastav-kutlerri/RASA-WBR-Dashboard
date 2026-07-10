@@ -6,7 +6,7 @@
   "trey@rasa.co": "$2b$10$bqCiXCy7C2xIZpJxvsuZkOPJAkESMStulG28bej/lRhsShb.ywCJO",
   "analytics@rasa.co": {
     "hash": "$2b$10$SqEoDt3D9FMdiYGGV6lhlOm.QkJrHZHriW.tdHUkfwFpEC5/Fhk2.",
-    "role": "user"
+    "role": "admin"
   },
   "analytics@kutlerri.ai": {
     "hash": "$2b$10$Tvc8i.qjlA7AY3i9pe44UuUb/yFq8NsBWj86zEfcV3vSSjWeBr13S",
