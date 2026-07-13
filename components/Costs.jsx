@@ -34,12 +34,49 @@ function computeTotal(d) {
   return { loc: 'Totals', laborAct, laborBud, cogsAct, cogsBud, pcAct, pcBud, varPC: pcAct - pcBud };
 }
 
-export default function Costs({ data }) {
+// Cost rows store Labor/COGS/PC as percentages of sales, not dollars — a
+// closed location can't just be dropped from a plain average of percentages.
+// Convert each open location's % back to dollars against its own sales
+// (actual % against actual sales, budget % against budget sales), sum those
+// dollars across the open locations, then divide by their combined sales to
+// re-derive the consolidated percentage.
+function computeOpenTotal(rows, salesRows) {
+  const salesByLoc = {};
+  salesRows.forEach(r => { salesByLoc[r.loc] = r; });
+
+  let laborActD = 0, laborBudD = 0, cogsActD = 0, cogsBudD = 0;
+  let salesActSum = 0, salesBudSum = 0;
+  for (const r of rows) {
+    const s = salesByLoc[r.loc] || {};
+    const sAct = s.actual || 0, sBud = s.budget || 0;
+    laborActD += (r.laborAct || 0) * sAct;
+    laborBudD += (r.laborBud || 0) * sBud;
+    cogsActD  += (r.cogsAct  || 0) * sAct;
+    cogsBudD  += (r.cogsBud  || 0) * sBud;
+    salesActSum += sAct;
+    salesBudSum += sBud;
+  }
+
+  const laborAct = salesActSum !== 0 ? laborActD / salesActSum : 0;
+  const laborBud = salesBudSum !== 0 ? laborBudD / salesBudSum : 0;
+  const cogsAct  = salesActSum !== 0 ? cogsActD  / salesActSum : 0;
+  const cogsBud  = salesBudSum !== 0 ? cogsBudD  / salesBudSum : 0;
+  const pcAct = laborAct + cogsAct;
+  const pcBud = laborBud + cogsBud;
+  return { loc: 'Totals', laborAct, laborBud, cogsAct, cogsBud, pcAct, pcBud, varPC: pcAct - pcBud };
+}
+
+export default function Costs({ data, openOnly, setOpenOnly, openLocSet }) {
   const [view, setView] = useState('weekly');
   const d = (data[view] && data[view].costs) || [];
-  const total = computeTotal(d);
-  const rows = d.filter(r => !/^totals?$/i.test(r.loc));
+  const salesRows = (data[view] && data[view].sales) || [];
+  const allRows = d.filter(r => !/^totals?$/i.test(r.loc));
+
+  const canFilter = openOnly && openLocSet?.size > 0;
+  const rows = canFilter ? allRows.filter(r => openLocSet.has(r.loc)) : allRows;
   const locs = rows.map(r => r.loc);
+  const total = canFilter ? computeOpenTotal(rows, salesRows) : computeTotal(d);
+  const displayRows = canFilter ? [...rows, total] : d;
 
   const varLabor = (total.laborAct || 0) - (total.laborBud || 0);
   const varCogs  = (total.cogsAct  || 0) - (total.cogsBud  || 0);
@@ -76,10 +113,18 @@ export default function Costs({ data }) {
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Costs</span>
-        <div className="toggle-group">
-          {VIEWS.map(v => (
-            <button key={v.id} className={`toggle-btn${view === v.id ? ' active' : ''}`} onClick={() => setView(v.id)}>{v.label}</button>
-          ))}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {openLocSet && (
+            <div className="toggle-group">
+              <button className={`toggle-btn${!openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(false)}>All Locations</button>
+              <button className={`toggle-btn${openOnly ? ' active' : ''}`} onClick={() => setOpenOnly(true)}>Open Locations</button>
+            </div>
+          )}
+          <div className="toggle-group">
+            {VIEWS.map(v => (
+              <button key={v.id} className={`toggle-btn${view === v.id ? ' active' : ''}`} onClick={() => setView(v.id)}>{v.label}</button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -132,7 +177,7 @@ export default function Costs({ data }) {
             { label: 'PC Bud',    cls: 'right' },
             { label: 'Var PC',    cls: 'right' },
           ]}
-          rows={d.map(r => ({
+          rows={displayRows.map(r => ({
             _cls: /^totals?$/i.test(r.loc) ? 'total-row' : '',
             cells: [r.loc, fmtPct(r.laborAct), fmtPct(r.laborBud), fmtPct(r.cogsAct), fmtPct(r.cogsBud), fmtPct(r.pcAct), fmtPct(r.pcBud), fmtVarPCColored(r.varPC || 0)],
           }))}
