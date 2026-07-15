@@ -229,6 +229,13 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
   const showApolloEmail = !!weekInfo && weekInfo.period >= 7;
   const apolloEmails = is30 ? (c.apolloEmail30d || []) : (c.apolloEmail90d || []);
 
+  // KPI-card/title tweaks below apply only to these two specific weeks.
+  const isSpecialWeek = data.label === 'Week of June 29' || data.label === 'Week of July 6';
+  const apolloTotal = apolloEmails.find(r => /^total$/i.test(r.campaign)) || {};
+  const showApolloKpi = isSpecialWeek && apolloEmails.length > 0;
+  const apolloOpenPct = apolloTotal.delivered > 0
+    ? ((apolloTotal.opened / apolloTotal.delivered) * 100).toFixed(1) + '%' : '-';
+
   const tEmail = emails.find(r => /^total$/i.test(r.campaign)) || {};
   const tFlow  = flows.find(r => /^total$/i.test(r.flow)) || {};
 
@@ -266,15 +273,25 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
       </div>
 
       <div className="kpi-row" style={{ marginBottom: 16 }}>
-        <div className="kpi-card">
-          <div className="kpi-label">Emails</div>
-          <div className="kpi-value">{fmt$(tEmail.revenue)}</div>
-          <div className="kpi-change neu">
-            Sent: {fmtN(tEmail.sent)} | Delivered: {fmtN(tEmail.delivered)} | Open: {emailOpenPct}
+        {showApolloKpi ? (
+          <div className="kpi-card">
+            <div className="kpi-label">Emails</div>
+            <div className="kpi-value">{fmtN(apolloTotal.sent)}</div>
+            <div className="kpi-change neu">
+              Delivered: {fmtN(apolloTotal.delivered)} | Open: {apolloOpenPct} | Replied: {fmtN(apolloTotal.replied)}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="kpi-card">
+            <div className="kpi-label">Emails</div>
+            <div className="kpi-value">{fmt$(tEmail.revenue)}</div>
+            <div className="kpi-change neu">
+              Sent: {fmtN(tEmail.sent)} | Delivered: {fmtN(tEmail.delivered)} | Open: {emailOpenPct}
+            </div>
+          </div>
+        )}
         <div className="kpi-card">
-          <div className="kpi-label">Flows</div>
+          <div className="kpi-label">Flows{isSpecialWeek ? ' (Klaviyo)' : ''}</div>
           <div className="kpi-value">{fmt$(tFlow.revenue)}</div>
           <div className="kpi-change neu">
             Delivered: {fmtN(tFlow.delivered)} | Open: {flowOpenPct}
@@ -318,7 +335,7 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
       )}
 
       <div className="table-card">
-        <div className="table-title">Automated Flows — Last {lbl}</div>
+        <div className="table-title">Automated Flows — Last {lbl}{isSpecialWeek ? ' (Klaviyo)' : ''}</div>
         <FlowTable rows={flows} />
       </div>
 
@@ -421,6 +438,11 @@ function LoyaltyMarketing({ data, sub, setSub }) {
   const smsCamp30d = lm.smsCamp30d || [];
   const activeSmsCamp = smsCampPeriod === '7d' ? smsCamp7d : smsCamp30d;
 
+  // KPI card below applies only to these two specific weeks.
+  const isSpecialWeek = data.label === 'Week of June 29' || data.label === 'Week of July 6';
+  const activeSmsCampTotal = activeSmsCamp.find(r => /^total$/i.test(r.campaign)) || {};
+  const showSmsCampaignsKpi = isSpecialWeek && showSmsCampaigns && activeSmsCamp.length > 0;
+
   const e7  = lm.email7d  || null;
   const e30 = lm.email30d || null;
   const e90 = lm.email90d || null;
@@ -487,6 +509,13 @@ function LoyaltyMarketing({ data, sub, setSub }) {
           <div className="kpi-value">{fmt$(activeTotal.revenue)}</div>
           <div className="kpi-change neu">{activeTotal.sent != null ? `${fmtN(activeTotal.sent)} sent` : ''}</div>
         </div>
+        {showSmsCampaignsKpi && (
+          <div className="kpi-card">
+            <div className="kpi-label">SMS Campaigns ({smsCampPeriod === '7d' ? '7 days' : '30 days'})</div>
+            <div className="kpi-value">{activeSmsCampTotal.roas != null ? `${activeSmsCampTotal.roas.toFixed(1)}×` : '-'}</div>
+            <div className="kpi-change neu">Sent: {fmtN(activeSmsCampTotal.sends)}</div>
+          </div>
+        )}
       </div>
 
       <div className="table-card">
