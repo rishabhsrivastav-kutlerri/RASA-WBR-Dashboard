@@ -4,11 +4,12 @@ import fs from 'fs';
 import { parseWeekFolder } from '@/lib/xlsxParser';
 import { verifyAuth } from '@/lib/auth';
 import { getWeekStatus, downloadFileAtPath } from '@/lib/githubStorage';
+import { readGenerated } from '@/lib/generated';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// In-memory cache keyed by week + file SHAs.
+// In-memory cache keyed by week + file SHAs (fallback path only).
 // Cache is valid as long as SHAs haven't changed — no rebuild needed.
 const cache = new Map();
 
@@ -24,7 +25,14 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Invalid week name' }, { status: 400 });
     }
 
-    // Lightweight GitHub call: get file paths + SHAs for this week's folder.
+    // Fast path: precomputed week JSON (parsed once at build time). This is the
+    // normal case and does zero Excel parsing at request time.
+    const pre = readGenerated(path.join('weeks', week + '.json'));
+    if (pre) return NextResponse.json(pre);
+
+    // ── Fallback: parse live from GitHub ──────────────────────────────────────
+    // Only reached if this week has no precomputed JSON yet (e.g. a fresh upload
+    // whose rebuild hasn't finished). Behaves exactly as the app did before.
     const { present, paths, shas } = await getWeekStatus(week);
     if (!present.wbr && !present.loyalty && !present.catering) {
       return NextResponse.json({ error: 'Week not found: ' + week }, { status: 404 });

@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { listWeeks } from '@/lib/githubStorage';
 import { weekInfoForLabel } from '@/lib/fiscalCalendar';
 import { verifyAuth } from '@/lib/auth';
+import { readGenerated } from '@/lib/generated';
 
 export const runtime = 'nodejs';
 
-// Cache the sheets list for 2 minutes — it changes only when admin uploads a new week.
+// Fallback cache: only used when the precomputed list is unavailable.
 let sheetsCache = null;
 let sheetsCacheAt = 0;
 const SHEETS_TTL = 2 * 60 * 1000;
@@ -14,6 +15,12 @@ export async function GET(request) {
   if (!verifyAuth(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Fast path: precomputed sheet list (built once per deploy).
+  const pre = readGenerated('sheets.json');
+  if (pre) return NextResponse.json({ sheets: pre });
+
+  // Fallback: live GitHub listing (only if precompute is missing).
   try {
     if (sheetsCache && Date.now() - sheetsCacheAt < SHEETS_TTL) {
       return NextResponse.json({ sheets: sheetsCache });

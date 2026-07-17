@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "precompute": "tsx scripts/precompute.mjs",
+    "build": "npm run precompute && next build",
     "start": "next start",
     "lint": "eslint ."
   },
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.6"
+    "eslint-config-next": "^16.2.6",
+    "tsx": "^4.23.1"
   }
 }
