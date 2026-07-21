@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
-import { downloadWeekFile } from '@/lib/githubStorage';
+import { downloadWeekFile, downloadPcrFile } from '@/lib/githubStorage';
 
 export const runtime = 'nodejs';
 
-const VALID_TYPES = new Set(['wbr', 'loyalty', 'catering']);
+const VALID_TYPES = new Set(['wbr', 'loyalty', 'catering', 'pcr']);
 
 export async function GET(request) {
   if (!verifyAdmin(request)) {
@@ -22,7 +22,9 @@ export async function GET(request) {
   }
 
   try {
-    const result = await downloadWeekFile(weekName, fileType);
+    const result = fileType === 'pcr'
+      ? await downloadPcrFile(weekName)
+      : await downloadWeekFile(weekName, fileType);
     if (!result) return NextResponse.json({ error: 'File not found' }, { status: 404 });
     return new NextResponse(result.buffer, {
       headers: {

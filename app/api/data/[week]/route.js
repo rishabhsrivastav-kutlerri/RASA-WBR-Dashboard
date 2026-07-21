@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { parseWeekFolder } from '@/lib/xlsxParser';
 import { verifyAuth } from '@/lib/auth';
-import { getWeekStatus, downloadFileAtPath } from '@/lib/githubStorage';
+import { getWeekStatus, getPcrFileStatus, downloadFileAtPath } from '@/lib/githubStorage';
 import { readGenerated } from '@/lib/generated';
 
 export const runtime = 'nodejs';
@@ -37,9 +37,12 @@ export async function GET(request, { params }) {
     if (!present.wbr && !present.loyalty && !present.catering) {
       return NextResponse.json({ error: 'Week not found: ' + week }, { status: 404 });
     }
+    // PCR workbook (Costs-tab Labor/COGS actuals) — optional, lives in a
+    // separate GitHub root. Absent for weeks that haven't been given one yet.
+    const pcrStatus = await getPcrFileStatus(week);
 
     // SHAs change only when a file actually changes in GitHub — perfect cache key.
-    const fp = [shas.wbr, shas.loyalty, shas.catering].join('|');
+    const fp = [shas.wbr, shas.loyalty, shas.catering, pcrStatus.sha].join('|');
     const cacheKey = `${week}:${fp}`;
     if (cache.has(cacheKey)) return NextResponse.json(cache.get(cacheKey));
 
@@ -50,13 +53,13 @@ export async function GET(request, { params }) {
     for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
 
     // Download all xlsx files in parallel instead of sequentially.
+    const filePaths = Object.values(paths).filter(Boolean);
+    if (pcrStatus.path) filePaths.push(pcrStatus.path);
     await Promise.all(
-      Object.values(paths)
-        .filter(Boolean)
-        .map(async filePath => {
-          const buf = await downloadFileAtPath(filePath);
-          if (buf) fs.writeFileSync(path.join(tmpDir, path.basename(filePath)), buf);
-        })
+      filePaths.map(async filePath => {
+        const buf = await downloadFileAtPath(filePath);
+        if (buf) fs.writeFileSync(path.join(tmpDir, path.basename(filePath)), buf);
+      })
     );
 
     const data = parseWeekFolder(tmpDir);

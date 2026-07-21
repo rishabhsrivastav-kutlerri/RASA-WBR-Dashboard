@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
-import { deleteWeekFile, deleteWeek } from '@/lib/githubStorage';
+import { deleteWeekFile, deleteWeek, deletePcrFile } from '@/lib/githubStorage';
 
 export const runtime = 'nodejs';
 
@@ -14,7 +14,9 @@ export async function DELETE(request) {
     if (weekName.includes('..') || weekName.includes('/') || weekName.includes('\\')) {
       return NextResponse.json({ error: 'Invalid weekName' }, { status: 400 });
     }
-    if (fileType) {
+    if (fileType === 'pcr') {
+      await deletePcrFile(weekName);
+    } else if (fileType) {
       await deleteWeekFile(weekName, fileType);
     } else {
       await deleteWeek(weekName);

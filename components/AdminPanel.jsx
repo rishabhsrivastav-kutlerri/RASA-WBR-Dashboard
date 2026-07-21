@@ -16,9 +16,17 @@ import {
   adminSaveLocation,
   adminDeleteLocation,
 } from '@/lib/api';
+import { weekInfoForLabel } from '@/lib/fiscalCalendar';
 
 const FILE_TYPES = ['wbr', 'loyalty', 'catering'];
 const GRANS      = ['weekly', 'period', 'quarter'];
+
+// PCR workbook (Costs-tab Labor/COGS actuals) is only available starting
+// Period 7 Week 2 (Week of July 6) onward — earlier weeks never had one.
+function qualifiesForPcr(weekName) {
+  const info = weekInfoForLabel(weekName);
+  return !!info && (info.period > 7 || (info.period === 7 && info.weekInPeriod >= 2));
+}
 
 // ── small UI atoms ─────────────────────────────────────────────────────────────
 
@@ -403,7 +411,7 @@ export default function AdminPanel() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    {['Week', 'WBR', 'Loyalty', 'Catering'].map(h => (
+                    {['Week', 'WBR', 'Loyalty', 'Catering', 'PCR'].map(h => (
                       <th key={h} style={{ textAlign: h === 'Week' ? 'left' : 'center', padding: '6px 10px', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>{h}</th>
                     ))}
                   </tr>
@@ -422,6 +430,18 @@ export default function AdminPanel() {
                           />
                         </td>
                       ))}
+                      <td style={{ padding: '10px 10px', verticalAlign: 'middle' }}>
+                        {qualifiesForPcr(w.weekName) ? (
+                          <FileCell
+                            present={w.pcr}
+                            onView={() => viewData(w.weekName, 'pcr')}
+                            onDelete={() => delData(w.weekName, 'pcr')}
+                            onUpload={() => setModal({ week: w.weekName, type: 'pcr' })}
+                          />
+                        ) : (
+                          <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

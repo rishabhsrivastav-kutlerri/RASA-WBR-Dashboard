@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { verifyAdmin } from '@/lib/auth';
-import { uploadWeekFile } from '@/lib/githubStorage';
+import { uploadWeekFile, uploadPcrFile } from '@/lib/githubStorage';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const VALID_TYPES = new Set(['wbr', 'loyalty', 'catering']);
+const VALID_TYPES = new Set(['wbr', 'loyalty', 'catering', 'pcr']);
 
 export async function POST(request) {
   if (!verifyAdmin(request)) {
@@ -21,7 +21,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'weekName, fileType, and file are required' }, { status: 400 });
     }
     if (!VALID_TYPES.has(fileType)) {
-      return NextResponse.json({ error: 'fileType must be wbr, loyalty, or catering' }, { status: 400 });
+      return NextResponse.json({ error: 'fileType must be wbr, loyalty, catering, or pcr' }, { status: 400 });
     }
     if (weekName.includes('..') || weekName.includes('/') || weekName.includes('\\')) {
       return NextResponse.json({ error: 'Invalid weekName' }, { status: 400 });
@@ -31,7 +31,9 @@ export async function POST(request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const path = await uploadWeekFile(weekName, fileType, buffer);
+    const path = fileType === 'pcr'
+      ? await uploadPcrFile(weekName, buffer)
+      : await uploadWeekFile(weekName, fileType, buffer);
     return NextResponse.json({ ok: true, weekName, fileType, path });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
