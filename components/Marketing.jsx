@@ -85,36 +85,6 @@ function CateringEmailTable({ rows }) {
   );
 }
 
-// Apollo-sourced email campaign table (Period 7 Week 1 onward only — see
-// showApolloEmail gate in CateringMarketing).
-const APOLLO_EMAIL_HEADERS = [
-  { label: 'Campaigns' },
-  { label: 'Sent',      cls: 'right' },
-  { label: 'Delivered', cls: 'right' },
-  { label: 'Bounced',   cls: 'right' },
-  { label: 'Opened',    cls: 'right' },
-  { label: 'Replied',   cls: 'right' },
-];
-function ApolloEmailTable({ rows }) {
-  if (!rows || !rows.length) return null;
-  return (
-    <Table
-      headers={APOLLO_EMAIL_HEADERS}
-      rows={rows.map(r => ({
-        _cls: /^total$/i.test(r.campaign) ? 'total-row' : '',
-        cells: [
-          r.campaign,
-          fmtN(r.sent),
-          fmtN(r.delivered),
-          fmtN(r.bounced),
-          openedCell(r.opened || 0, r.delivered || 0),
-          fmtN(r.replied),
-        ],
-      }))}
-    />
-  );
-}
-
 // SMS Campaigns table (Loyalty Marketing) — Period 7 Week 1 onward only, see
 // showSmsCampaigns gate in LoyaltyMarketing.
 const SMS_CAMPAIGN_HEADERS = [
@@ -224,15 +194,24 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
   const ezAds90  = c.ezcaterAds90d || [];
 
   // Apollo email tables are new in the source workbook starting Period 7 Week 1
-  // (Week of June 29) — do not show them for any earlier week.
+  // (Week of June 29) — do not show them for any earlier week. Read generically
+  // (headers + raw rows) so new columns added to the sheet show up as-is.
   const weekInfo = weekInfoForLabel(data.label);
   const showApolloEmail = !!weekInfo && weekInfo.period >= 7;
-  const apolloEmails = is30 ? (c.apolloEmail30d || []) : (c.apolloEmail90d || []);
+  const apolloEmails = is30 ? (c.apolloEmail30d || { headers: [], rows: [] }) : (c.apolloEmail90d || { headers: [], rows: [] });
+  const apolloHdrs = apolloEmails.headers || [];
+  const apolloRows = apolloEmails.rows || [];
 
-  // KPI-card/title tweaks below apply only to these two specific weeks.
-  const isSpecialWeek = data.label === 'Week of June 29' || data.label === 'Week of July 6';
-  const apolloTotal = apolloEmails.find(r => /^total$/i.test(r.campaign)) || {};
-  const showApolloKpi = isSpecialWeek && apolloEmails.length > 0;
+  const apolloTotalRow = apolloRows.find(cells => /^total$/i.test(String(cells[0] ?? '')));
+  const apolloIdxOf = name => apolloHdrs.findIndex(h => new RegExp(name, 'i').test(h));
+  const apolloSentIdx = apolloIdxOf('sent'), apolloDeliveredIdx = apolloIdxOf('delivered'),
+        apolloOpenedIdx = apolloIdxOf('opened');
+  const apolloTotal = {
+    sent:      apolloTotalRow && apolloSentIdx >= 0      ? Number(apolloTotalRow[apolloSentIdx])      : null,
+    delivered: apolloTotalRow && apolloDeliveredIdx >= 0 ? Number(apolloTotalRow[apolloDeliveredIdx]) : null,
+    opened:    apolloTotalRow && apolloOpenedIdx >= 0    ? Number(apolloTotalRow[apolloOpenedIdx])    : null,
+  };
+  const showApolloKpi = showApolloEmail && apolloRows.length > 0;
   const apolloOpenPct = apolloTotal.delivered > 0
     ? ((apolloTotal.opened / apolloTotal.delivered) * 100).toFixed(1) + '%' : '-';
 
@@ -275,10 +254,10 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
       <div className="kpi-row" style={{ marginBottom: 16 }}>
         {showApolloKpi ? (
           <div className="kpi-card">
-            <div className="kpi-label">Emails</div>
+            <div className="kpi-label">Emails (Apollo)</div>
             <div className="kpi-value">{fmtN(apolloTotal.sent)}</div>
             <div className="kpi-change neu">
-              Delivered: {fmtN(apolloTotal.delivered)} | Open: {apolloOpenPct} | Replied: {fmtN(apolloTotal.replied)}
+              Delivered: {fmtN(apolloTotal.delivered)} | Open: {apolloOpenPct}
             </div>
           </div>
         ) : (
@@ -291,7 +270,7 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
           </div>
         )}
         <div className="kpi-card">
-          <div className="kpi-label">Flows{isSpecialWeek ? ' (Klaviyo)' : ''}</div>
+          <div className="kpi-label">Flows (Klaviyo)</div>
           <div className="kpi-value">{fmt$(tFlow.revenue)}</div>
           <div className="kpi-change neu">
             Delivered: {fmtN(tFlow.delivered)} | Open: {flowOpenPct}
@@ -327,15 +306,15 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
         <CateringEmailTable rows={emails} />
       </div>
 
-      {showApolloEmail && apolloEmails.length > 0 && (
+      {showApolloEmail && apolloRows.length > 0 && (
         <div className="table-card">
           <div className="table-title">Email Campaigns — Last {lbl} (Apollo)</div>
-          <ApolloEmailTable rows={apolloEmails} />
+          <EmailTable table={apolloEmails} />
         </div>
       )}
 
       <div className="table-card">
-        <div className="table-title">Automated Flows — Last {lbl}{isSpecialWeek ? ' (Klaviyo)' : ''}</div>
+        <div className="table-title">Automated Flows — Last {lbl} (Klaviyo)</div>
         <FlowTable rows={flows} />
       </div>
 

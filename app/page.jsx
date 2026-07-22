@@ -237,7 +237,7 @@ export default function DashboardPage() {
             {loading && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)' }}><div className="spinner" style={{ margin: '0 auto 10px' }} />Loading week…</div>}
             {!loading && tab === 'snapshot'      && <Snapshot data={data} prevData={prevData} openOnly={openOnly} setOpenOnly={setOpenOnly} openLocSet={openLocSet} />}
             {!loading && tab === 'sales'         && <Sales data={data} prevData={prevData} openOnly={openOnly} setOpenOnly={setOpenOnly} openLocSet={openLocSet} />}
-            {!loading && tab === 'costs'         && <Costs data={data} />}
+            {!loading && tab === 'costs'         && <Costs data={data} prevData={prevData} />}
             {!loading && tab === 'reviews'       && <Reviews data={data} prevData={prevData} />}
             {!loading && tab === 'thirdparty'    && <ThirdParty data={data} prevData={prevData} />}
             {!loading && tab === 'bikky'         && <Bikky data={data} />}

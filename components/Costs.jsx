@@ -79,21 +79,31 @@ function computeWeightedTotal(rows, salesRows) {
   return { loc: 'Totals', laborAct, laborBud, cogsAct, cogsBud, pcAct, pcBud, varPC: pcAct - pcBud, primeMarginAct: 1 - pcAct };
 }
 
-export default function Costs({ data }) {
+export default function Costs({ data, prevData }) {
   const [view, setView] = useState('weekly');
   const [catFilter, setCatFilter] = useState('cogs');
   const [expandedCat, setExpandedCat] = useState(null);
   const [trendLoc, setTrendLoc] = useState('All Locations');
   const [trendCategory, setTrendCategory] = useState(ALL_CATEGORIES_KEY);
 
+  // Period 7 Week 3 (Week of July 13) is shown with last week's (Period 7
+  // Week 2) Costs data until its own PCR file has been uploaded — a real
+  // per-location primeMarginAct on a non-Totals row is the signal that PCR
+  // was actually applied for the current week, not just the old
+  // Flash-Results-COSTS-sourced actuals.
+  const curWeekInfo = weekInfoForLabel(data.label);
+  const isP7W3 = !!curWeekInfo && curWeekInfo.period === 7 && curWeekInfo.weekInPeriod === 3;
+  const curHasPcr = (data.weekly?.costs || []).some(r => !/^totals?$/i.test(r.loc) && r.primeMarginAct != null);
+  const effectiveData = (isP7W3 && !curHasPcr && prevData) ? prevData : data;
+
   // Trailing 4/8-week filters and the COGS/Labor location-compare table are
   // only available for Period 7 Week 2 (Week of July 6).
-  const weekInfo = weekInfoForLabel(data.label);
+  const weekInfo = weekInfoForLabel(effectiveData.label);
   const showTrailing = !!weekInfo && weekInfo.period === 7 && weekInfo.weekInPeriod === 2;
   const views = showTrailing ? [...BASE_VIEWS, ...TRAILING_VIEWS] : BASE_VIEWS;
   const activeView = views.find(v => v.id === view) ? view : 'weekly';
 
-  const catByLoc = catFilter === 'cogs' ? data.costsByCategory?.cogs : data.costsByCategory?.labor;
+  const catByLoc = catFilter === 'cogs' ? effectiveData.costsByCategory?.cogs : effectiveData.costsByCategory?.labor;
   const catList = catByLoc?.MVT || [];
   // Follows the same Weekly / Period to Date / Trailing 4 / Trailing 8 filter
   // as the rest of the tab — all four are present in the PCR sheet.
@@ -185,8 +195,8 @@ export default function Costs({ data }) {
     scales: { y: { ticks: { callback: v => v + '%' } } },
   };
 
-  const d = (data[activeView] && data[activeView].costs) || [];
-  const salesRows = (data[activeView] && data[activeView].sales) || [];
+  const d = (effectiveData[activeView] && effectiveData[activeView].costs) || [];
+  const salesRows = (effectiveData[activeView] && effectiveData[activeView].sales) || [];
   const allRows = d.filter(r => !/^totals?$/i.test(r.loc));
   const hasBudget = allRows.some(r => r.laborBud != null);
 
@@ -285,7 +295,7 @@ export default function Costs({ data }) {
         />
       </div>
 
-      {showTrailing && data.costsByCategory && (
+      {showTrailing && effectiveData.costsByCategory && (
         <div className="table-card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
             <div className="table-title" style={{ marginBottom: 0 }}>Location Compare — {catFilter === 'cogs' ? 'COGS' : 'Labor'}</div>
@@ -325,7 +335,7 @@ export default function Costs({ data }) {
         </div>
       )}
 
-      {showTrailing && data.costsByCategory && weeksWindow > 0 && (
+      {showTrailing && effectiveData.costsByCategory && weeksWindow > 0 && (
         <div className="chart-card" style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
             <div className="chart-title" style={{ marginBottom: 0 }}>
