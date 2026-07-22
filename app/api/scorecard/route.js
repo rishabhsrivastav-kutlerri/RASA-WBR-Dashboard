@@ -1,7 +1,8 @@
 import path from 'path';
 import { NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
-import { listScorecards, loadScorecard } from '@/lib/scorecard';
+import { listScorecards, loadScorecardFromBuffer } from '@/lib/scorecard';
+import { downloadScorecardFile } from '@/lib/githubStorage';
 import { readGenerated } from '@/lib/generated';
 
 export const runtime = 'nodejs';
@@ -33,10 +34,18 @@ export async function GET(request) {
     }
 
     // Fallback: live parse (item not in the precomputed map yet).
+    if (item.includes('/') || item.includes('\\') || item.includes('..')) {
+      return NextResponse.json({ error: 'Invalid scorecard id' }, { status: 400 });
+    }
     const cacheKey = `${granularity}:${item}`;
     if (cache.has(cacheKey)) return NextResponse.json(cache.get(cacheKey));
 
-    const data = loadScorecard(granularity, item);
+    // Download from GitHub into memory rather than reading scorecard/<granularity>/
+    // off local disk — that folder isn't shipped to the deployed function (see
+    // outputFileTracingExcludes in next.config.js).
+    const file = await downloadScorecardFile(granularity, item);
+    if (!file) { const e = new Error('Scorecard not found'); e.code = 'NOT_FOUND'; throw e; }
+    const data = loadScorecardFromBuffer(granularity, file.buffer);
     cache.set(cacheKey, data);
     return NextResponse.json(data);
   } catch (err) {

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "precompute": "tsx scripts/precompute.mjs",
-    "build": "npm run precompute && next build",
+    "build": "npm run precompute && next build --webpack",
     "start": "next start",
     "lint": "eslint ."
   },
