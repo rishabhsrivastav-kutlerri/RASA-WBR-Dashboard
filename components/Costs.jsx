@@ -29,7 +29,9 @@ const BASE_VIEWS = [
   { id: 'ptd',    label: 'Period to Date' },
 ];
 // Trailing 4/8-week views — Period 7 Week 2 (Week of July 6) only, see
-// showTrailing gate below. Same PCR sheet as weekly/PTD; no budget data.
+// showTrailing gate below. Same PCR sheet as weekly/PTD; budget is pulled the
+// same way as PTD (Budget Import sets one target per period, not per week —
+// see the trailing4/trailing8 budget logic in lib/xlsxParser.js).
 const TRAILING_VIEWS = [
   { id: 'trailing4', label: 'Trailing 4 Weeks' },
   { id: 'trailing8', label: 'Trailing 8 Weeks' },
@@ -196,7 +198,14 @@ export default function Costs({ data, prevData }) {
   };
 
   const d = (effectiveData[activeView] && effectiveData[activeView].costs) || [];
-  const salesRows = (effectiveData[activeView] && effectiveData[activeView].sales) || [];
+  // Trailing 4/8 have no sales rows of their own (the PCR sheet doesn't break
+  // sales out by trailing window), so their Totals row would otherwise fall
+  // back to computeTotal's flat, Ballpark-included PCR sheet total instead of
+  // the weighted, Ballpark-excluded total every other view uses. Sales-dollar
+  // weights are a period-level concept anyway (same as budget — see
+  // lib/xlsxParser.js), so PTD's sales rows are the correct weights to borrow.
+  const salesRows = (effectiveData[activeView] && effectiveData[activeView].sales)
+    || (['trailing4', 'trailing8'].includes(activeView) ? (effectiveData.ptd?.sales || []) : []);
   const allRows = d.filter(r => !/^totals?$/i.test(r.loc));
   const hasBudget = allRows.some(r => r.laborBud != null);
 
