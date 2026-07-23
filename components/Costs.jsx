@@ -198,14 +198,18 @@ export default function Costs({ data, prevData }) {
   };
 
   const d = (effectiveData[activeView] && effectiveData[activeView].costs) || [];
-  // Trailing 4/8 have no sales rows of their own (the PCR sheet doesn't break
-  // sales out by trailing window), so their Totals row would otherwise fall
-  // back to computeTotal's flat, Ballpark-included PCR sheet total instead of
-  // the weighted, Ballpark-excluded total every other view uses. Sales-dollar
+  // Trailing 4 has no sales rows of its own (the PCR sheet doesn't break sales
+  // out by trailing window), so its Totals row would otherwise fall back to
+  // computeTotal's flat, Ballpark-included PCR sheet total instead of the
+  // weighted, Ballpark-excluded total every other view uses. Sales-dollar
   // weights are a period-level concept anyway (same as budget — see
   // lib/xlsxParser.js), so PTD's sales rows are the correct weights to borrow.
+  // Trailing 8's Totals row is excluded here — its overall Labor/COGS budget
+  // is already the Budget Import sheet's own authoritative figure (set
+  // directly on the Totals row in lib/xlsxParser.js), so it must go through
+  // computeTotal below rather than being recomputed by computeWeightedTotal.
   const salesRows = (effectiveData[activeView] && effectiveData[activeView].sales)
-    || (['trailing4', 'trailing8'].includes(activeView) ? (effectiveData.ptd?.sales || []) : []);
+    || (activeView === 'trailing4' ? (effectiveData.ptd?.sales || []) : []);
   const allRows = d.filter(r => !/^totals?$/i.test(r.loc));
   const hasBudget = allRows.some(r => r.laborBud != null);
 
