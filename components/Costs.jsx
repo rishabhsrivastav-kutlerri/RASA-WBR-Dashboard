@@ -128,15 +128,15 @@ export default function Costs({ data, prevData }) {
   const [compareSubCat, setCompareSubCat] = useState('food');
   const [trendCategory, setTrendCategory] = useState(ALL_CATEGORIES_KEY);
 
-  // Period 7 Week 3 (Week of July 13) is shown with last week's (Period 7
-  // Week 2) Costs data until its own PCR file has been uploaded — a real
-  // per-location primeMarginAct on a non-Totals row is the signal that PCR
-  // was actually applied for the current week, not just the old
+  // Period 7 Week 3 (Week of July 13) onwards is shown with the immediately
+  // previous week's Costs data until its own PCR file has been uploaded — a
+  // real per-location primeMarginAct on a non-Totals row is the signal that
+  // PCR was actually applied for the current week, not just the old
   // Flash-Results-COSTS-sourced actuals.
   const curWeekInfo = weekInfoForLabel(data.label);
-  const isP7W3 = !!curWeekInfo && curWeekInfo.period === 7 && curWeekInfo.weekInPeriod === 3;
+  const isP7W3Plus = !!curWeekInfo && (curWeekInfo.period > 7 || (curWeekInfo.period === 7 && curWeekInfo.weekInPeriod >= 3));
   const curHasPcr = (data.weekly?.costs || []).some(r => !/^totals?$/i.test(r.loc) && r.primeMarginAct != null);
-  const effectiveData = (isP7W3 && !curHasPcr && prevData) ? prevData : data;
+  const effectiveData = (isP7W3Plus && !curHasPcr && prevData) ? prevData : data;
 
   // Trailing 4/8-week filters and the COGS/Labor category-breakdown features
   // (Location Compare tables, category trendlines) are only available from
