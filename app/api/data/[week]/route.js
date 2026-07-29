@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
-import { parseWeekFolder } from '@/lib/xlsxParser';
+import { parseWeekFolder, mergeCostsByCategoryHistory } from '@/lib/xlsxParser';
 import { verifyAuth } from '@/lib/auth';
 import { getWeekStatus, getPcrFileStatus, downloadFileAtPath } from '@/lib/githubStorage';
 import { readGenerated } from '@/lib/generated';
+import { weekNumForLabel } from '@/lib/fiscalCalendar';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -63,6 +64,28 @@ export async function GET(request, { params }) {
     );
 
     const data = parseWeekFolder(tmpDir);
+
+    // Best-effort carry-forward, same as the build-time precompute chain
+    // (see scripts/precompute.mjs): this branch only runs for a week whose
+    // precomputed JSON doesn't exist yet (e.g. right after an admin upload,
+    // before the next deploy's precompute finishes), so without this it
+    // would show only its own file's category history until then. Uses the
+    // last successful precompute's sheets index + generated JSON — a fast
+    // local read, no extra GitHub calls.
+    if (data.costsByCategory) {
+      const sheetsIdx = readGenerated('sheets.json') || [];
+      const curNum = weekNumForLabel(week);
+      if (curNum != null) {
+        const prevWeek = sheetsIdx
+          .filter(s => { const n = weekNumForLabel(s.week); return n != null && n < curNum; })
+          .sort((a, b) => weekNumForLabel(b.week) - weekNumForLabel(a.week))[0];
+        const prevData = prevWeek ? readGenerated(path.join('weeks', prevWeek.week + '.json')) : null;
+        if (prevData?.costsByCategory) {
+          data.costsByCategory = mergeCostsByCategoryHistory(data.costsByCategory, prevData.costsByCategory);
+        }
+      }
+    }
+
     cache.set(cacheKey, data);
     return NextResponse.json(data);
   } catch (err) {

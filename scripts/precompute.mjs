@@ -12,9 +12,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import fs from 'fs';
 import path from 'path';
-import { parseWeekFolder } from '../lib/xlsxParser.js';
+import { parseWeekFolder, mergeCostsByCategoryHistory } from '../lib/xlsxParser.js';
 import { listScorecards, loadScorecard } from '../lib/scorecard.js';
-import { weekInfoForLabel } from '../lib/fiscalCalendar.js';
+import { weekInfoForLabel, weekNumForLabel } from '../lib/fiscalCalendar.js';
 
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, 'generated');
@@ -29,7 +29,7 @@ function writeJson(relPath, data) {
 function listWeekDirs() {
   const dataDir = path.join(ROOT, 'data');
   if (!fs.existsSync(dataDir)) return [];
-  return fs
+  const dirs = fs
     .readdirSync(dataDir)
     .filter((w) => {
       try {
@@ -37,8 +37,12 @@ function listWeekDirs() {
       } catch {
         return false;
       }
-    })
-    .sort();
+    });
+  // Chronological (fiscal week) order, not alphabetical — "Week of July 13"
+  // sorts before "Week of June 1" alphabetically, which would be backwards
+  // for the costsByCategory carry-forward below. Unparseable labels sort
+  // last (Infinity) rather than breaking the run.
+  return dirs.sort((a, b) => (weekNumForLabel(a) ?? Infinity) - (weekNumForLabel(b) ?? Infinity));
 }
 
 function human(bytes) {
@@ -52,12 +56,21 @@ async function main() {
   fs.mkdirSync(OUT, { recursive: true });
 
   // ── Weeks ──────────────────────────────────────────────────────────────────
+  // Processed in chronological order so each week's costsByCategory can carry
+  // forward the previous week's already-known category history — Full
+  // History/Trailing 26 Weeks then keep growing every week even when a given
+  // week only ever uploads one 12-week PCR file (see mergeCostsByCategoryHistory).
   const weeks = listWeekDirs();
   const sheets = [];
   let okWeeks = 0;
+  let prevCostsByCategory = null;
   for (const week of weeks) {
     try {
       const data = parseWeekFolder(path.join('data', week));
+      if (data.costsByCategory) {
+        data.costsByCategory = mergeCostsByCategoryHistory(data.costsByCategory, prevCostsByCategory);
+        prevCostsByCategory = data.costsByCategory;
+      }
       const size = writeJson(path.join('weeks', week + '.json'), data);
       const info = weekInfoForLabel(week);
       sheets.push({
