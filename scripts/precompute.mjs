@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { parseWeekFolder, mergeCostsByCategoryHistory } from '../lib/xlsxParser.js';
 import { listScorecards, loadScorecard } from '../lib/scorecard.js';
 import { weekInfoForLabel, weekNumForLabel } from '../lib/fiscalCalendar.js';
@@ -19,11 +20,45 @@ import { weekInfoForLabel, weekNumForLabel } from '../lib/fiscalCalendar.js';
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, 'generated');
 
+// Vercel restores .next/cache from the previous successful deploy before
+// running the build, so a fingerprint + cached-output pair written here
+// survives across deploys. Every admin upload changes exactly one file, so
+// without this every deploy re-parses all weeks/scorecards from scratch —
+// this lets unchanged ones skip straight to their last computed result.
+const CACHE_DIR = path.join(ROOT, '.next', 'cache', 'precompute-cache');
+
 function writeJson(relPath, data) {
   const file = path.join(OUT, relPath);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(data));
   return fs.statSync(file).size;
+}
+
+// Fingerprint = hash of every input file's name + content that could affect
+// this item's parsed output. Content-based, not mtime-based — a fresh git
+// clone resets every file's mtime to checkout time, so mtime can't tell
+// "changed" from "unchanged" across deploys the way file content can.
+function fingerprint(filePaths) {
+  const hash = crypto.createHash('sha1');
+  for (const p of filePaths.slice().sort()) {
+    hash.update(p);
+    try { hash.update(fs.readFileSync(p)); } catch { hash.update('MISSING'); }
+  }
+  return hash.digest('hex');
+}
+
+function readCache(cacheKey) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(CACHE_DIR, cacheKey + '.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(cacheKey, entry) {
+  const file = path.join(CACHE_DIR, cacheKey + '.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(entry));
 }
 
 function listWeekDirs() {
@@ -63,14 +98,34 @@ async function main() {
   const weeks = listWeekDirs();
   const sheets = [];
   let okWeeks = 0;
+  let cachedWeeks = 0;
   let prevCostsByCategory = null;
   for (const week of weeks) {
     try {
-      const data = parseWeekFolder(path.join('data', week));
-      if (data.costsByCategory) {
-        data.costsByCategory = mergeCostsByCategoryHistory(data.costsByCategory, prevCostsByCategory);
-        prevCostsByCategory = data.costsByCategory;
+      const weekDir = path.join(ROOT, 'data', week);
+      const pcrDir = path.join(ROOT, 'PCR', week);
+      const depFiles = [
+        ...fs.readdirSync(weekDir).map(f => path.join(weekDir, f)),
+        ...(fs.existsSync(pcrDir) ? fs.readdirSync(pcrDir).map(f => path.join(pcrDir, f)) : []),
+      ];
+      const fp = fingerprint(depFiles);
+      const cacheKey = 'weeks/' + week;
+      const cached = readCache(cacheKey);
+
+      let data;
+      if (cached && cached.fingerprint === fp) {
+        data = cached.data;
+        prevCostsByCategory = data.costsByCategory || prevCostsByCategory;
+        cachedWeeks++;
+      } else {
+        data = parseWeekFolder(path.join('data', week));
+        if (data.costsByCategory) {
+          data.costsByCategory = mergeCostsByCategoryHistory(data.costsByCategory, prevCostsByCategory);
+          prevCostsByCategory = data.costsByCategory;
+        }
+        writeCache(cacheKey, { fingerprint: fp, data });
       }
+
       const size = writeJson(path.join('weeks', week + '.json'), data);
       const info = weekInfoForLabel(week);
       sheets.push({
@@ -80,7 +135,7 @@ async function main() {
         weekInPeriod: info ? info.weekInPeriod : null,
       });
       okWeeks++;
-      console.log(`  week  ✓ ${week.padEnd(22)} ${human(size)}`);
+      console.log(`  week  ✓ ${week.padEnd(22)} ${human(size)}${cached && cached.fingerprint === fp ? '  (cached)' : ''}`);
     } catch (err) {
       console.error(`  week  ✗ ${week}: ${err.message}`);
     }
@@ -89,6 +144,7 @@ async function main() {
 
   // ── Scorecards ───────────────────────────────────────────────────────────────
   let okCards = 0;
+  let cachedCards = 0;
   try {
     const index = listScorecards(); // { weekly:[{id,label,sort}], period:[...], quarter:[...] }
     writeJson(path.join('scorecard', 'index.json'), index);
@@ -96,7 +152,18 @@ async function main() {
       const byId = {};
       for (const item of index[granularity]) {
         try {
-          byId[item.id] = loadScorecard(granularity, item.id);
+          const file = path.join(ROOT, 'scorecard', granularity, item.id);
+          const fp = fingerprint([file]);
+          const cacheKey = 'scorecard/' + granularity + '/' + item.id;
+          const cached = readCache(cacheKey);
+          if (cached && cached.fingerprint === fp) {
+            byId[item.id] = cached.data;
+            cachedCards++;
+          } else {
+            const data = loadScorecard(granularity, item.id);
+            writeCache(cacheKey, { fingerprint: fp, data });
+            byId[item.id] = data;
+          }
           okCards++;
         } catch (err) {
           console.error(`  card  ✗ ${granularity}/${item.id}: ${err.message}`);
@@ -104,7 +171,7 @@ async function main() {
       }
       writeJson(path.join('scorecard', granularity + '.json'), byId);
     }
-    console.log(`  scorecards ✓ ${okCards} across ${Object.keys(index).length} granularities`);
+    console.log(`  scorecards ✓ ${okCards} across ${Object.keys(index).length} granularities (${cachedCards} cached)`);
   } catch (err) {
     console.error(`  scorecards ✗ ${err.message}`);
     // Still emit an empty index so the route has something to read.
@@ -112,7 +179,7 @@ async function main() {
   }
 
   console.log(
-    `\nprecompute: ${okWeeks}/${weeks.length} weeks, ${okCards} scorecards → generated/  (${((Date.now() - t0) / 1000).toFixed(1)}s)`,
+    `\nprecompute: ${okWeeks}/${weeks.length} weeks (${cachedWeeks} cached), ${okCards} scorecards (${cachedCards} cached) → generated/  (${((Date.now() - t0) / 1000).toFixed(1)}s)`,
   );
 }
 
