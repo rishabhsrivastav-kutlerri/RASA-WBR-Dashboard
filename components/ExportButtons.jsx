@@ -46,10 +46,44 @@ function csvCell(s) {
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 
-function tableToCsv(tableEl) {
+// Expands colspan/rowspan into a full grid (repeating a merged header cell's
+// text into every column/row it visually covers) before turning it into CSV
+// — a plain per-row textContent scrape misaligns as soon as any header uses
+// merged cells (e.g. a grouped-column header spanning several sub-columns),
+// since the header row then has fewer cells than the data rows below it.
+function tableToGrid(tableEl) {
   const rows = Array.from(tableEl.querySelectorAll('tr'));
-  return rows
-    .map(tr => Array.from(tr.querySelectorAll('th,td')).map(cell => csvCell((cell.textContent || '').trim())).join(','))
+  const grid = [];
+  const rowSpans = {}; // col -> { text, remaining }
+  rows.forEach((tr, r) => {
+    grid[r] = [];
+    let col = 0;
+    const fillCovered = () => {
+      while (rowSpans[col] && rowSpans[col].remaining > 0) {
+        grid[r][col] = rowSpans[col].text;
+        rowSpans[col].remaining--;
+        col++;
+      }
+    };
+    for (const cell of tr.querySelectorAll('th,td')) {
+      fillCovered();
+      const text = (cell.textContent || '').trim();
+      const colSpan = parseInt(cell.getAttribute('colspan') || '1', 10) || 1;
+      const rowSpan = parseInt(cell.getAttribute('rowspan') || '1', 10) || 1;
+      for (let k = 0; k < colSpan; k++) {
+        grid[r][col] = text;
+        if (rowSpan > 1) rowSpans[col] = { text, remaining: rowSpan - 1 };
+        col++;
+      }
+    }
+    fillCovered();
+  });
+  return grid;
+}
+
+function tableToCsv(tableEl) {
+  return tableToGrid(tableEl)
+    .map(row => row.map(cell => csvCell(cell || '')).join(','))
     .join('\r\n');
 }
 

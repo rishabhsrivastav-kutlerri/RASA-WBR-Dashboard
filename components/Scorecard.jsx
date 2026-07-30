@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { fetchScorecardIndex, fetchScorecard } from '@/lib/api';
 import { ExportCsvButton } from './ExportButtons';
 
@@ -81,6 +81,195 @@ function ColorTable({ title, data, isAdmin }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Scoring Matrix / Performance Rating Key — static reference tables shown
+// above "Area Leader Dashboard". Hardcoded from the source workbooks'
+// conditional formatting; nothing here is computed or bound to fetched data.
+// The bright purple used in the sheets for the title bar / header row /
+// "Total Weight" footer is swapped for the dashboard's own theme accent
+// (var(--accent), the same purple used for the top nav and the active
+// Weekly/Period/Quarterly toggle) so these tables read as native to the
+// dashboard rather than pasted from Excel — every other fill is reproduced
+// exactly as specified.
+const THEME_PURPLE = 'var(--accent)';
+const INTERP_BG = '#ECECEC';
+const CELL_BORDER = '1px solid #E0E0E0';
+
+const INTERP_RANGE = ['—', '1.0–1.9', '2.0–2.9', '3.0–3.9', '4.0–4.9', '5.0'];
+
+const PRIME_COST_ROWS = weight => [
+  { cat: 'Prime Cost', catBg: '#FDEBD0', metric: 'Labor vs Budget Variance (pts)', weight, bands: ['≥+3.0', '2.0–2.99', '1.0–1.99', '0.01–0.99', '0.0 to -0.99', '≤-1.0'] },
+  { cat: 'Prime Cost', catBg: '#FDEBD0', metric: 'COGS vs Budget Variance (pts)', weight, bands: ['≥+3.0', '2.0–2.99', '1.0–1.99', '0.01–0.99', '0.0 to -0.99', '≤-1.0'] },
+];
+
+const WEEKLY_ROWS = [
+  { cat: 'Sales', catBg: '#D4E6F1', metric: 'Sales vs Budget (%)', weight: '6%', bands: ['<90%', '90–94.9%', '95–98.9%', '99–101.9%', '102–104.9%', '≥105%'] },
+  { cat: 'Sales', catBg: '#D4E6F1', metric: 'Sales vs Prior Year (%)', weight: '6%', bands: ['<95%', '95–99.9%', '100–104.9%', '105–107.4%', '107.5–114.9%', '≥115%'] },
+  ...PRIME_COST_ROWS('14.5%'),
+  { cat: 'Operational', catBg: '#EAF2FF', metric: 'In-Store Rating', weight: '29%', bands: ['<3.8', '3.8–3.99', '4.0–4.29', '4.3–4.49', '4.5–4.69', '≥4.7'] },
+  { cat: 'Operational', catBg: '#EAF2FF', metric: '3P Error Rate (%)', weight: '12%', bands: ['>6%', '4.01–6%', '2.01–4%', '1.51–2%', '1.01–1.5%', '≤1%'] },
+  { cat: 'Operational', catBg: '#EAF2FF', metric: 'Avoidable Wait (mins)', weight: '9%', bands: ['>8', '>5–8', '>2–5', '>1.5–2', '>1–1.5', '≤1'] },
+  { cat: 'Operational', catBg: '#EAF2FF', metric: '3P Rating', weight: '9%', bands: ['<3.8', '3.8–3.99', '4.0–4.29', '4.3–4.49', '4.5–4.69', '≥4.7'] },
+];
+
+const PERIOD_ROWS = [
+  { cat: 'Sales', catBg: '#D4E6F1', metric: 'Sales vs Budget (%)', weight: '4%', bands: ['<90%', '90–94.9%', '95–98.9%', '99–101.9%', '102–104.9%', '≥105%'] },
+  { cat: 'Sales', catBg: '#D4E6F1', metric: 'Sales vs Prior Year (%)', weight: '4%', bands: ['<95%', '95–99.9%', '100–104.9%', '105–107.4%', '107.5–114.9%', '≥115%'] },
+  { cat: 'EBITDA', catBg: '#D5F5E3', metric: 'EBITDA vs Budget (%)', weight: '12.5%', bands: ['<75%', '75–84%', '85–94%', '95–100%', '101–105%', '>105%'] },
+  ...PRIME_COST_ROWS('10.5%'),
+  { cat: 'Operational', catBg: '#EAF2FF', metric: 'In-Store Rating', weight: '21%', bands: ['<3.8', '3.8–3.99', '4.0–4.29', '4.3–4.49', '4.5–4.69', '≥4.7'] },
+  { cat: 'Operational', catBg: '#EAF2FF', metric: '3P Error Rate (%)', weight: '8.5%', bands: ['>6%', '4.01–6%', '2.01–4%', '1.51–2%', '1.01–1.5%', '≤1%'] },
+  { cat: 'Operational', catBg: '#EAF2FF', metric: 'Avoidable Wait (mins)', weight: '6.5%', bands: ['>8', '>5–8', '>2–5', '>1.5–2', '>1–1.5', '≤1'] },
+  { cat: 'Operational', catBg: '#EAF2FF', metric: '3P Rating', weight: '6.5%', bands: ['<3.8', '3.8–3.99', '4.0–4.29', '4.3–4.49', '4.5–4.69', '≥4.7'] },
+  { cat: 'Operational', catBg: '#EAF2FF', metric: 'Full Audit Score', weight: '16%', bands: ['<70', '70–74', '75–82', '83–88', '89–93', '≥94'] },
+];
+
+// Quarterly = Period rows, plus a training-completion eligibility gate (no
+// weight, no interpolation range — it's pass/fail, not a scored band).
+const QUARTER_ROWS = [
+  ...PERIOD_ROWS,
+  {
+    cat: 'Eligibility', catBg: '#F2F3F4', metric: 'Training Completion % (Gate)', weight: '—',
+    gate: [
+      { text: '<87% = Ineligible', bg: '#FAD7D3', span: 3 },
+      { text: '≥87% = Eligible', bg: '#D5F5E3', span: 3 },
+    ],
+    blankInterp: true,
+  },
+];
+
+const SCORING_MATRICES = {
+  weekly:  { title: 'RASA · Store Scoring Matrix – Weekly', rows: WEEKLY_ROWS },
+  period:  { title: 'RASA · Period Scoring Matrix',         rows: PERIOD_ROWS },
+  quarter: { title: 'RASA · Quaterly Scoring Matrix',       rows: QUARTER_ROWS },
+};
+
+const BAND_HEADERS = ['0', '1', '2', '3', '4', '5'];
+const BAND_BG = ['#FADBD8', '#FAE5D3', '#FEF9E7', '#D5F5E3', '#D6EAF8', '#E8DAEF'];
+
+const RATING_KEY_ROWS = [
+  { perf: 'STAR', score: '4.7 – 5.0', color: '#33A854' },
+  { perf: 'HIGH', score: '3.7 – 4.7', color: '#B6D7A8' },
+  { perf: 'CONTRIBUTOR', score: '2.7 – 3.7', color: '#FFE599' },
+  { perf: 'LOW', score: '1.7 – 2.7', color: '#EA9999' },
+  { perf: 'NON', score: '0.0 – 1.7', color: '#FF5C5F' },
+];
+
+function ScoringMatrixTable({ gran }) {
+  const matrix = SCORING_MATRICES[gran] || SCORING_MATRICES.weekly;
+  const thStyle = { border: CELL_BORDER, padding: '7px 10px', background: THEME_PURPLE, color: '#fff', fontWeight: 700, fontSize: 12, textAlign: 'center' };
+  const tdBase = { border: CELL_BORDER, padding: '6px 10px', fontSize: 12 };
+  return (
+    <div style={{ border: '1px solid #E0E0E0', borderRadius: 8, overflow: 'hidden', flex: '2 1 620px', minWidth: 0 }}>
+      <div style={{ background: THEME_PURPLE, color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 12px', textAlign: 'center' }}>
+        {matrix.title}
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '27%' }} />
+            <col style={{ width: '8%' }} />
+            {BAND_HEADERS.map(h => <col key={h} style={{ width: '9.17%' }} />)}
+          </colgroup>
+          <thead>
+            <tr>
+              <th style={thStyle}>Category</th>
+              <th style={thStyle}>Metric</th>
+              <th style={thStyle}>Weight (%)</th>
+              {BAND_HEADERS.map(h => <th key={h} style={thStyle}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.rows.map((r, i) => (
+              <Fragment key={i}>
+                <tr>
+                  <td style={{ ...tdBase, background: r.catBg, fontWeight: 700 }}>{r.cat}</td>
+                  <td style={{ ...tdBase, fontWeight: 700 }}>{r.metric}</td>
+                  <td style={{ ...tdBase, fontWeight: 700, textAlign: 'center' }}>{r.weight}</td>
+                  {r.gate
+                    ? r.gate.map((g, gi) => (
+                        <td key={gi} colSpan={g.span} style={{ ...tdBase, background: g.bg, fontWeight: 600, textAlign: 'center' }}>{g.text}</td>
+                      ))
+                    : r.bands.map((b, bi) => (
+                        <td key={bi} style={{ ...tdBase, background: BAND_BG[bi], fontWeight: 600, textAlign: 'center' }}>{b}</td>
+                      ))}
+                </tr>
+                <tr>
+                  <td style={{ ...tdBase, background: INTERP_BG, color: '#999999', fontStyle: 'italic' }} colSpan={3}>Interpolated score range</td>
+                  {(r.blankInterp ? ['', '', '', '', '', ''] : INTERP_RANGE).map((v, vi) => (
+                    <td key={vi} style={{ ...tdBase, background: INTERP_BG, color: '#555555', textAlign: 'center' }}>{v}</td>
+                  ))}
+                </tr>
+              </Fragment>
+            ))}
+            <tr>
+              <td style={{ ...tdBase, background: THEME_PURPLE, color: '#fff', fontWeight: 700 }}>Total Weight (%)</td>
+              <td style={{ ...tdBase, background: THEME_PURPLE }} />
+              <td style={{ ...tdBase, background: THEME_PURPLE, color: '#fff', fontWeight: 700, textAlign: 'center' }}>100%</td>
+              {BAND_HEADERS.map(h => <td key={h} style={{ ...tdBase, background: THEME_PURPLE }} />)}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RatingKeyTable() {
+  const thStyle = { border: CELL_BORDER, padding: '7px 10px', background: 'var(--bg3)', fontWeight: 700, fontSize: 12, textAlign: 'center', color: 'var(--muted)' };
+  const tdBase = { border: CELL_BORDER, padding: '6px 10px', fontSize: 12, background: '#F3F3F3' };
+  return (
+    <div style={{ border: '1px solid #E0E0E0', borderRadius: 8, overflow: 'hidden', width: 320, maxWidth: '100%' }}>
+      <div style={{ background: THEME_PURPLE, color: '#fff', fontWeight: 700, fontSize: 13, padding: '10px 12px', textAlign: 'center' }}>
+        Performance Rating Key
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={thStyle}>Performance</th>
+            <th style={thStyle}>Score</th>
+            <th style={thStyle}>Colour</th>
+          </tr>
+        </thead>
+        <tbody>
+          {RATING_KEY_ROWS.map(r => (
+            <tr key={r.perf}>
+              <td style={{ ...tdBase, fontWeight: 700 }}>{r.perf}</td>
+              <td style={{ ...tdBase, textAlign: 'center' }}>{r.score}</td>
+              <td style={{ ...tdBase, padding: 0 }}><div style={{ background: r.color, height: 22, width: '100%' }} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Collapsed by default — the matrix only renders once the dropdown-style
+// button is clicked.
+function ScoringMatrixSection({ gran }) {
+  const [open, setOpen] = useState(false);
+  const matrix = SCORING_MATRICES[gran] || SCORING_MATRICES.weekly;
+  return (
+    <div className="table-card" style={{ marginBottom: 16 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 10, background: '#f3f4f6', border: '1.5px solid var(--border)', color: '#1a1f2e', padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Montserrat',sans-serif" }}
+      >
+        <span>{matrix.title}</span>
+        <span style={{ display: 'inline-block', transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          <ScoringMatrixTable gran={gran} />
+        </div>
+      )}
     </div>
   );
 }
@@ -167,7 +356,11 @@ export default function Scorecard({ userRole }) {
       )}
       {!error && !loading && data && (
         <>
+          <ScoringMatrixSection gran={gran} />
           <ColorTable title={`Area Leader Dashboard${current ? ' — ' + current.label : ''}`} data={data.dashboard} isAdmin={isAdmin} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <RatingKeyTable />
+          </div>
         </>
       )}
     </>
