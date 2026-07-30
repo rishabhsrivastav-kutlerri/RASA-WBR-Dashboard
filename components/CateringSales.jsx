@@ -4,6 +4,7 @@ import { useState } from 'react';
 import '@/lib/chartSetup';
 import { Line } from 'react-chartjs-2';
 import Table from './Table';
+import { ExportCsvButton, ExportImageButton } from './ExportButtons';
 import { fmt$ } from '@/lib/fmt';
 
 const VIEWS = [
@@ -96,7 +97,7 @@ function MetricsTable({ metrics, cols }) {
   );
 }
 
-function OutboundTrendGrid({ metrics }) {
+function OutboundTrendGrid({ metrics, isAdmin }) {
   const cols = metrics[0]?._cols;
   if (!cols) return null;
   const labels = [cols.c1, cols.c2, cols.c3, cols.c4, cols.c5];
@@ -149,8 +150,11 @@ function OutboundTrendGrid({ metrics }) {
         };
         return (
           <div className="chart-card" key={i}>
-            <div className="chart-title" style={{ marginBottom: 8, fontSize: 13 }}>
-              5-Week Trend — {r.metric}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div className="chart-title" style={{ marginBottom: 0, fontSize: 13 }}>
+                5-Week Trend — {r.metric}
+              </div>
+              <ExportImageButton filename={`5-Week Trend - ${r.metric}.png`} />
             </div>
             <div style={{ height: 160 }}>
               <Line data={data} options={opts} />
@@ -205,7 +209,8 @@ function CustomerBreakdownTable({ rows }) {
   );
 }
 
-export default function CateringSales({ data }) {
+export default function CateringSales({ data, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [view, setView] = useState('outbound');
   const cs = data.catSales || {};
 
@@ -243,7 +248,10 @@ export default function CateringSales({ data }) {
   return (
     <>
       <div className="table-card" style={{ marginBottom: 16 }}>
-        <div className="table-title">Catering — Summary (Inbound &amp; Outbound)</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>Catering — Summary (Inbound &amp; Outbound)</div>
+          <ExportCsvButton filename="Catering Summary.csv" />
+        </div>
         <Table
           headers={[
             { label: '#' },
@@ -260,14 +268,20 @@ export default function CateringSales({ data }) {
       </div>
       {customerBreakdown.length > 0 && (
         <div className="table-card" style={{ marginBottom: 16 }}>
-          <div className="table-title">Catering — New vs Repeat Customers</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="table-title" style={{ marginBottom: 0 }}>Catering — New vs Repeat Customers</div>
+            <ExportCsvButton filename="Catering New vs Repeat Customers.csv" />
+          </div>
           <CustomerBreakdownTable rows={customerBreakdown} />
         </div>
       )}
 
       {cols && (
         <div className="table-card" style={{ marginBottom: 20 }}>
-          <div className="table-title">Outbound Catering Team — Input &amp; Output Metrics</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="table-title" style={{ marginBottom: 0 }}>Outbound Catering Team — Input &amp; Output Metrics</div>
+            <ExportCsvButton filename="Outbound Catering Team Metrics.csv" />
+          </div>
           <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>
             Overall: Starts from October 15, 2025
           </div>
@@ -275,7 +289,7 @@ export default function CateringSales({ data }) {
         </div>
       )}
 
-      {cols && <OutboundTrendGrid metrics={metrics} />}
+      {cols && <OutboundTrendGrid metrics={metrics} isAdmin={isAdmin} />}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 12 }}>
         <div className="toggle-group">
@@ -288,11 +302,17 @@ export default function CateringSales({ data }) {
       {view === 'outbound' && (
         <>
           <div className="table-card" style={{ marginBottom: 16 }}>
-            <div className="table-title">Outbound Catering — Last Week Orders</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+              <div className="table-title" style={{ marginBottom: 0 }}>Outbound Catering — Last Week Orders</div>
+              <ExportCsvButton filename="Outbound Catering Last Week Orders.csv" />
+            </div>
             <OrdersTable rows={obOrders} />
           </div>
           <div className="table-card" style={{ marginBottom: 20 }}>
-            <div className="table-title">Catering — Outbound Summary</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+              <div className="table-title" style={{ marginBottom: 0 }}>Catering — Outbound Summary</div>
+              <ExportCsvButton filename="Catering Outbound Summary.csv" />
+            </div>
             <SummaryByDirTable rows={obSum} />
           </div>
         </>
@@ -301,11 +321,17 @@ export default function CateringSales({ data }) {
       {view === 'inbound' && (
         <>
           <div className="table-card" style={{ marginBottom: 16 }}>
-            <div className="table-title">Inbound Catering — Last Week Orders</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+              <div className="table-title" style={{ marginBottom: 0 }}>Inbound Catering — Last Week Orders</div>
+              <ExportCsvButton filename="Inbound Catering Last Week Orders.csv" />
+            </div>
             <OrdersTable rows={ibOrders} />
           </div>
           <div className="table-card" style={{ marginBottom: 16 }}>
-            <div className="table-title">Catering — Inbound Summary</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+              <div className="table-title" style={{ marginBottom: 0 }}>Catering — Inbound Summary</div>
+              <ExportCsvButton filename="Catering Inbound Summary.csv" />
+            </div>
             <SummaryByDirTable rows={ibSum} />
           </div>
         </>
@@ -313,7 +339,10 @@ export default function CateringSales({ data }) {
 
       {view === 'outbound' && trend.length > 0 && (
         <div className="chart-card">
-          <div className="chart-title">WoW — Catering Trend — Outbound</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>WoW — Catering Trend — Outbound</div>
+            <ExportImageButton filename="WoW Catering Trend Outbound.png" />
+          </div>
           <Line
             data={{
               labels: trend.map(t => t.week),
@@ -356,7 +385,10 @@ export default function CateringSales({ data }) {
 
       {view === 'inbound' && ibTrend.length > 0 && (
         <div className="chart-card">
-          <div className="chart-title">WoW — Catering Trend — Inbound</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>WoW — Catering Trend — Inbound</div>
+            <ExportImageButton filename="WoW Catering Trend Inbound.png" />
+          </div>
           <Line
             data={{
               labels: ibTrend.map(t => t.week),

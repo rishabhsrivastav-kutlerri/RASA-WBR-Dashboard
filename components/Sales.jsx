@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import '@/lib/chartSetup';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import Table from './Table';
+import { ExportCsvButton, ExportImageButton } from './ExportButtons';
 import { fmt$, fmtVarColored } from '@/lib/fmt';
 
 const VIEWS = [
@@ -74,7 +75,8 @@ const SUB_OPTIONS = [
 const CAT_LABEL = { delivery: 'Delivery', pickup: 'Pickup (Takeout)', catering: 'Catering', offsites: 'Offsites' };
 const PIE_COLORS = ['#9f7cef', '#f9a8d4', '#86efac', '#fcd34d', '#93c5fd', '#f9a8a8'];
 
-export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSet }) {
+export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSet, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [view, setView] = useState('weekly');
   const [sub, setSub]   = useState('all');
   const [loc, setLoc]   = useState('all');
@@ -345,7 +347,10 @@ export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSe
 
       <div className="charts-row">
         <div className="chart-card" style={{ gridColumn: 'span 1' }}>
-          <div className="chart-title">{chartTitle}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>{chartTitle}</div>
+            <ExportImageButton filename="Revenue Comparison.png" />
+          </div>
           <Bar data={barData} options={{
             responsive: true,
             plugins: {
@@ -377,7 +382,10 @@ export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSe
           }} />
         </div>
         <div className="chart-card" style={{ gridColumn: 'span 1' }}>
-          <div className="chart-title">{pieTitle}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>{pieTitle}</div>
+            <ExportImageButton filename="Revenue Mix.png" />
+          </div>
           <Doughnut data={pieData} options={{
             responsive: true,
             cutout: '55%',
@@ -401,13 +409,16 @@ export default function Sales({ data, prevData, openOnly, setOpenOnly, openLocSe
       <div className="table-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
           <div className="table-title" style={{ marginBottom: 0 }}>{tableTitle}</div>
-          <select
-            value={sub}
-            onChange={e => setSub(e.target.value)}
-            style={{ background: '#f3f4f6', border: '1.5px solid var(--border)', color: '#1a1f2e', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat',sans-serif" }}
-          >
-            {SUB_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              value={sub}
+              onChange={e => setSub(e.target.value)}
+              style={{ background: '#f3f4f6', border: '1.5px solid var(--border)', color: '#1a1f2e', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat',sans-serif" }}
+            >
+              {SUB_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <ExportCsvButton filename="Revenue by Centre.csv" />
+          </div>
         </div>
         <Table headers={tableHeaders} rows={tableRows} />
       </div>

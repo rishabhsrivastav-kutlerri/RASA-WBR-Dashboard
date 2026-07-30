@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Table from './Table';
+import { ExportCsvButton } from './ExportButtons';
 import { fmt$, fmtN, fmtPct, fmtVar } from '@/lib/fmt';
 import { weekInfoForLabel } from '@/lib/fiscalCalendar';
   
@@ -181,7 +182,8 @@ function RoasVarChip({ curr, prev }) {
 }
 
 // ─── Catering Marketing ─────────────────────────────────────────────────────
-function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
+function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod, userRole }) {
+  const isAdmin = userRole === 'admin';
   const c     = data.catering     || data.marketing?.catering     || {};
   const prevC = prevData?.catering || prevData?.marketing?.catering || {};
   const is30 = period === '30d';
@@ -302,25 +304,37 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">Email Campaigns — Last {lbl} (Klaviyo)</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>Email Campaigns — Last {lbl} (Klaviyo)</div>
+          <ExportCsvButton filename="Email Campaigns Klaviyo.csv" />
+        </div>
         <CateringEmailTable rows={emails} />
       </div>
 
       {showApolloEmail && apolloRows.length > 0 && (
         <div className="table-card">
-          <div className="table-title">Email Campaigns — Last {lbl} (Apollo)</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="table-title" style={{ marginBottom: 0 }}>Email Campaigns — Last {lbl} (Apollo)</div>
+            <ExportCsvButton filename="Email Campaigns Apollo.csv" />
+          </div>
           <EmailTable table={apolloEmails} />
         </div>
       )}
 
       <div className="table-card">
-        <div className="table-title">Automated Flows — Last {lbl} (Klaviyo)</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>Automated Flows — Last {lbl} (Klaviyo)</div>
+          <ExportCsvButton filename="Automated Flows Klaviyo.csv" />
+        </div>
         <FlowTable rows={flows} />
       </div>
 
       {is30 && (
         <div className="table-card">
-          <div className="table-title">EzCater Paid Ads — Last 30 Days</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="table-title" style={{ marginBottom: 0 }}>EzCater Paid Ads — Last 30 Days</div>
+            <ExportCsvButton filename="EzCater Paid Ads 30 Days.csv" />
+          </div>
           <Table
             headers={[
               { label: 'Restaurant' },
@@ -360,7 +374,10 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
 
       {!is30 && ezAds90.length > 0 && (
         <div className="table-card">
-          <div className="table-title">EzCater Paid Ads — Last 90 Days</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="table-title" style={{ marginBottom: 0 }}>EzCater Paid Ads — Last 90 Days</div>
+            <ExportCsvButton filename="EzCater Paid Ads 90 Days.csv" />
+          </div>
           <Table
             headers={[
               { label: 'Restaurant' },
@@ -402,7 +419,8 @@ function CateringMarketing({ data, prevData, sub, setSub, period, setPeriod }) {
 }
 
 // ─── Loyalty Marketing ──────────────────────────────────────────────────────
-function LoyaltyMarketing({ data, sub, setSub }) {
+function LoyaltyMarketing({ data, sub, setSub, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [emailPeriod, setEmailPeriod] = useState('');
   const [smsCampPeriod, setSmsCampPeriod] = useState('7d');
 
@@ -498,7 +516,10 @@ function LoyaltyMarketing({ data, sub, setSub }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">SMS + Push Campaigns — WoW Metrics</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>SMS + Push Campaigns — WoW Metrics</div>
+          <ExportCsvButton filename="SMS Push Campaigns WoW Metrics.csv" />
+        </div>
         <Table
           headers={[
             { label: 'Metric' },
@@ -523,9 +544,12 @@ function LoyaltyMarketing({ data, sub, setSub }) {
             <div className="table-title" style={{ marginBottom: 0 }}>
               SMS Campaigns — Last {smsCampPeriod === '7d' ? '7 Days' : '30 Days'} (Open)
             </div>
-            <div className="toggle-group">
-              <button className={`toggle-btn${smsCampPeriod === '7d' ? ' active' : ''}`} onClick={() => setSmsCampPeriod('7d')}>7 Days</button>
-              <button className={`toggle-btn${smsCampPeriod === '30d' ? ' active' : ''}`} onClick={() => setSmsCampPeriod('30d')}>30 Days</button>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div className="toggle-group">
+                <button className={`toggle-btn${smsCampPeriod === '7d' ? ' active' : ''}`} onClick={() => setSmsCampPeriod('7d')}>7 Days</button>
+                <button className={`toggle-btn${smsCampPeriod === '30d' ? ' active' : ''}`} onClick={() => setSmsCampPeriod('30d')}>30 Days</button>
+              </div>
+              <ExportCsvButton filename="SMS Campaigns.csv" />
             </div>
           </div>
           <SmsCampaignTable rows={activeSmsCamp} />
@@ -535,12 +559,15 @@ function LoyaltyMarketing({ data, sub, setSub }) {
       <div className="table-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div className="table-title" style={{ marginBottom: 0 }}>Email Campaigns — Last {activeLabel} ({activeEmail?.platform || 'Klaviyo'})</div>
-          <div className="toggle-group">
-            {periods.map(p => (
-              <button key={p.id} className={`toggle-btn${activePeriodId === p.id ? ' active' : ''}`} onClick={() => setEmailPeriod(p.id)}>
-                {p.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div className="toggle-group">
+              {periods.map(p => (
+                <button key={p.id} className={`toggle-btn${activePeriodId === p.id ? ' active' : ''}`} onClick={() => setEmailPeriod(p.id)}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <ExportCsvButton filename="Email Campaigns Loyalty.csv" />
           </div>
         </div>
         {!activeEmail || !activeEmail.rows?.length
@@ -552,12 +579,12 @@ function LoyaltyMarketing({ data, sub, setSub }) {
   );
 }
 
-export default function Marketing({ data, prevData }) {
+export default function Marketing({ data, prevData, userRole }) {
   const [sub, setSub]       = useState('catering');
   const [period, setPeriod] = useState('30d');
 
   if (sub === 'catering') {
-    return <CateringMarketing data={data} prevData={prevData} sub={sub} setSub={setSub} period={period} setPeriod={setPeriod} />;
+    return <CateringMarketing data={data} prevData={prevData} sub={sub} setSub={setSub} period={period} setPeriod={setPeriod} userRole={userRole} />;
   }
-  return <LoyaltyMarketing data={data} sub={sub} setSub={setSub} />;
+  return <LoyaltyMarketing data={data} sub={sub} setSub={setSub} userRole={userRole} />;
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetchScorecardIndex, fetchScorecard } from '@/lib/api';
+import { ExportCsvButton } from './ExportButtons';
 
 const hexRGB = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 
@@ -51,11 +52,14 @@ function cellPill(header, c) {
 }
 
 // Colors cells from the sheet's own fills (plus the Composite Score CF rule).
-function ColorTable({ title, data }) {
+function ColorTable({ title, data, isAdmin }) {
   if (!data || !data.headers || !data.headers.length) return null;
   return (
     <div className="table-card" style={{ marginBottom: 16 }}>
-      <div className="table-title">{title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+        <div className="table-title" style={{ marginBottom: 0 }}>{title}</div>
+        <ExportCsvButton filename={`${title}.csv`} />
+      </div>
       <table className="scorecard-table">
         <thead>
           <tr>{data.headers.map((h, i) => <th key={i} className={i === 0 ? '' : 'right'}>{h}</th>)}</tr>
@@ -81,7 +85,8 @@ function ColorTable({ title, data }) {
   );
 }
 
-export default function Scorecard() {
+export default function Scorecard({ userRole }) {
+  const isAdmin = userRole === 'admin';
   const [index, setIndex] = useState(null);
   const [gran, setGran] = useState('weekly');
   const [item, setItem] = useState('');
@@ -162,7 +167,7 @@ export default function Scorecard() {
       )}
       {!error && !loading && data && (
         <>
-          <ColorTable title={`Area Leader Dashboard${current ? ' — ' + current.label : ''}`} data={data.dashboard} />
+          <ColorTable title={`Area Leader Dashboard${current ? ' — ' + current.label : ''}`} data={data.dashboard} isAdmin={isAdmin} />
         </>
       )}
     </>

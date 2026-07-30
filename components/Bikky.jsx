@@ -4,6 +4,7 @@ import { useState } from 'react';
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
 import Table from './Table';
+import { ExportCsvButton, ExportImageButton } from './ExportButtons';
 import { fmt$2, fmtN, fmtPct, fmtVar } from '@/lib/fmt';
 
 const SECTIONS = [
@@ -82,7 +83,7 @@ function buildLocTotal(rows) {
   return { loc: 'Total', orders, aov, guests, newGuests, ordersGrowth: 0, guestsGrowth: 0, newGuestsGrowth: 0 };
 }
 
-function LocSection({ bikky }) {
+function LocSection({ bikky, isAdmin }) {
   const [locPeriod, setLocPeriod] = useState('weekly');
   const locs = bikky.locations || {};
   const rawRows = locPeriod === 'weekly' ? (locs.weekly?.curr || [])
@@ -152,7 +153,10 @@ function LocSection({ bikky }) {
       </div>
 
       <div className="table-card" style={{ marginBottom: 16 }}>
-        <div className="table-title">By Location — {lbl}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>By Location — {lbl}</div>
+          <ExportCsvButton filename="By Location.csv" />
+        </div>
         <Table
           headers={[
             { label: 'Location' },
@@ -181,7 +185,10 @@ function LocSection({ bikky }) {
       </div>
 
       <div className="chart-card">
-        <div className="chart-title">Guests by Location — {lbl}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className="chart-title" style={{ marginBottom: 0 }}>Guests by Location — {lbl}</div>
+          <ExportImageButton filename="Guests by Location.png" />
+        </div>
         <div style={{ height: 280 }}>
           <Bar data={chartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
         </div>
@@ -190,7 +197,7 @@ function LocSection({ bikky }) {
   );
 }
 
-function AcqSection({ bikky }) {
+function AcqSection({ bikky, isAdmin }) {
   const [view, setView]     = useState('monthwise');   // monthwise | weekwise
   const [retSel, setRetSel] = useState('90d');         // 90d | 30d
 
@@ -273,7 +280,10 @@ function AcqSection({ bikky }) {
       })()}
 
       <div className="table-card" style={{ marginBottom: 16 }}>
-        <div className="table-title">{tableTitle}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>{tableTitle}</div>
+          <ExportCsvButton filename="Customer Acquisition.csv" />
+        </div>
         <Table
           headers={[
             { label: 'Period' },
@@ -300,7 +310,10 @@ function AcqSection({ bikky }) {
       </div>
 
       <div className="chart-card">
-        <div className="chart-title">{chartTitle}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className="chart-title" style={{ marginBottom: 0 }}>{chartTitle}</div>
+          <ExportImageButton filename="New Guests and Return Rate.png" />
+        </div>
         <div style={{ height: 280 }}>
           <Bar
             data={chartData}
@@ -321,7 +334,7 @@ function AcqSection({ bikky }) {
   );
 }
 
-function OnbSection({ bikky }) {
+function OnbSection({ bikky, isAdmin }) {
   const [onbPeriod, setOnbPeriod] = useState('monthly');
   const onb = bikky.onboarding || {};
   const rows = onbPeriod === 'monthly' ? (onb.monthly || []) : (onb.weekly || []);
@@ -394,7 +407,10 @@ function OnbSection({ bikky }) {
       })()}
 
       <div className="table-card" style={{ marginBottom: 16 }}>
-        <div className="table-title">{lbl}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>{lbl}</div>
+          <ExportCsvButton filename="Onboarding.csv" />
+        </div>
         <Table
           headers={[
             { label: 'Period' },
@@ -422,13 +438,19 @@ function OnbSection({ bikky }) {
 
       <div className="charts-row">
         <div className="chart-card">
-          <div className="chart-title">Total Onboarded Guests ({periodSuffix})</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>Total Onboarded Guests ({periodSuffix})</div>
+            <ExportImageButton filename="Total Onboarded Guests.png" />
+          </div>
           <div style={{ height: 280 }}>
             <Bar data={onboardedChart} options={barOpts} />
           </div>
         </div>
         <div className="chart-card">
-          <div className="chart-title">Total Engaged Guests ({periodSuffix})</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>Total Engaged Guests ({periodSuffix})</div>
+            <ExportImageButton filename="Total Engaged Guests.png" />
+          </div>
           <div style={{ height: 280 }}>
             <Bar data={engagedChart} options={barOpts} />
           </div>
@@ -438,7 +460,8 @@ function OnbSection({ bikky }) {
   );
 }
 
-export default function Bikky({ data }) {
+export default function Bikky({ data, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [section, setSection] = useState('loc');
   const bikky = data?.bikky || {};
 
@@ -450,9 +473,9 @@ export default function Bikky({ data }) {
         ))}
       </div>
 
-      {section === 'loc' && <LocSection bikky={bikky} />}
-      {section === 'acq' && <AcqSection bikky={bikky} />}
-      {section === 'onb' && <OnbSection bikky={bikky} />}
+      {section === 'loc' && <LocSection bikky={bikky} isAdmin={isAdmin} />}
+      {section === 'acq' && <AcqSection bikky={bikky} isAdmin={isAdmin} />}
+      {section === 'onb' && <OnbSection bikky={bikky} isAdmin={isAdmin} />}
     </>
   );
 }

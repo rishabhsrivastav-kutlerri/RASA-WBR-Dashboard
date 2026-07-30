@@ -4,6 +4,7 @@ import { useState } from 'react';
 import '@/lib/chartSetup';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import Table from './Table';
+import { ExportCsvButton, ExportImageButton } from './ExportButtons';
 import { fmt$, fmtN, fmtPct, fmtVar, CHART_COLORS } from '@/lib/fmt';
 import { weekInfoForLabel } from '@/lib/fiscalCalendar';
 
@@ -78,7 +79,8 @@ function SectionToggle({ section, setSection }) {
   );
 }
 
-export default function Loyalty({ data, prevData }) {
+export default function Loyalty({ data, prevData, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [section, setSection]   = useState('lifecycle');
   const [lcPeriod, setLcPeriod] = useState('wow');
   const [awPeriod, setAwPeriod] = useState('weekly');
@@ -103,16 +105,16 @@ export default function Loyalty({ data, prevData }) {
         ))}
       </div>
 
-      {section === 'lifecycle' && <Lifecycle L={L} period={lcPeriod} setPeriod={setLcPeriod} showTrend={showTrend} />}
-      {section === 'sales'     && <Sales L={L} prevL={prevL} period={discPer} setPeriod={setDiscPer} />}
-      {section === 'appweb'    && <AppWeb L={L} period={awPeriod} setPeriod={setAwPeriod} />}
-      {section === 'delpick'   && <DelPick L={L} period={dpPeriod} setPeriod={setDpPeriod} />}
+      {section === 'lifecycle' && <Lifecycle L={L} period={lcPeriod} setPeriod={setLcPeriod} showTrend={showTrend} isAdmin={isAdmin} />}
+      {section === 'sales'     && <Sales L={L} prevL={prevL} period={discPer} setPeriod={setDiscPer} isAdmin={isAdmin} />}
+      {section === 'appweb'    && <AppWeb L={L} period={awPeriod} setPeriod={setAwPeriod} isAdmin={isAdmin} />}
+      {section === 'delpick'   && <DelPick L={L} period={dpPeriod} setPeriod={setDpPeriod} isAdmin={isAdmin} />}
     </>
   );
 }
 
 // ─── Customer Lifecycle ─────────────────────────────────────────────────────
-function Lifecycle({ L, period, setPeriod, showTrend }) {
+function Lifecycle({ L, period, setPeriod, showTrend, isAdmin }) {
   const wow = L.lifecycle?.wow || [];
   const mom = L.lifecycle?.mom || [];
   const signupsTrend    = L.lifecycleTrend?.signups    || { weeks: [], values: [] };
@@ -217,13 +219,19 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
       {period === 'wow' ? (
         <>
           <div className="chart-card" style={{ marginBottom: 16 }}>
-            <div className="chart-title">Customer Lifecycle - WoW</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div className="chart-title" style={{ marginBottom: 0 }}>Customer Lifecycle - WoW</div>
+              <ExportImageButton filename="Customer Lifecycle - WoW.png" />
+            </div>
             <div style={{ height: 300 }}>
               <Bar data={wowChart} options={grpBarOpts} />
             </div>
           </div>
           <div className="table-card">
-            <div className="table-title">Customer Lifecycle - WoW</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div className="table-title" style={{ marginBottom: 0 }}>Customer Lifecycle - WoW</div>
+              <ExportCsvButton filename="Customer Lifecycle - WoW.csv" />
+            </div>
             <Table
               headers={[
                 { label: wowH.metric },
@@ -238,13 +246,19 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
           {showTrend && (signupsTrend.values.length > 0 || appDlTrend.values.length > 0) && (
             <>
               <div className="chart-card" style={{ marginBottom: 16 }}>
-                <div className="chart-title">Loyalty Signups — Trend</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div className="chart-title" style={{ marginBottom: 0 }}>Loyalty Signups — Trend</div>
+                  <ExportImageButton filename="Loyalty Signups Trend.png" />
+                </div>
                 <div style={{ height: 220 }}>
                   <Line data={signupsChart} options={lineOpts} />
                 </div>
               </div>
               <div className="chart-card">
-                <div className="chart-title">App Downloads — Trend</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div className="chart-title" style={{ marginBottom: 0 }}>App Downloads — Trend</div>
+                  <ExportImageButton filename="App Downloads Trend.png" />
+                </div>
                 <div style={{ height: 220 }}>
                   <Line data={appDlChart} options={lineOpts} />
                 </div>
@@ -255,7 +269,10 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
       ) : (
         <>
           <div className="table-card">
-            <div className="table-title">Customer Lifecycle - MoM</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div className="table-title" style={{ marginBottom: 0 }}>Customer Lifecycle - MoM</div>
+              <ExportCsvButton filename="Customer Lifecycle - MoM.csv" />
+            </div>
             <Table
               headers={[
                 { label: momH.metric },
@@ -269,13 +286,19 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
           {momTrend.months.length > 0 && (
             <>
               <div className="chart-card" style={{ marginBottom: 16 }}>
-                <div className="chart-title">Loyalty Signups — Monthly Trend</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div className="chart-title" style={{ marginBottom: 0 }}>Loyalty Signups — Monthly Trend</div>
+                  <ExportImageButton filename="Loyalty Signups Monthly Trend.png" />
+                </div>
                 <div style={{ height: 220 }}>
                   <Line data={momSignupsChart} options={lineOpts} />
                 </div>
               </div>
               <div className="chart-card">
-                <div className="chart-title">App Downloads — Monthly Trend</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div className="chart-title" style={{ marginBottom: 0 }}>App Downloads — Monthly Trend</div>
+                  <ExportImageButton filename="App Downloads Monthly Trend.png" />
+                </div>
                 <div style={{ height: 220 }}>
                   <Line data={momAppDlChart} options={lineOpts} />
                 </div>
@@ -289,7 +312,7 @@ function Lifecycle({ L, period, setPeriod, showTrend }) {
 }
 
 // ─── Loyalty Sales ──────────────────────────────────────────────────────────
-function Sales({ L, prevL, period, setPeriod }) {
+function Sales({ L, prevL, period, setPeriod, isAdmin }) {
   const rows = L.salesByLoc || [];
   const totals = L.salesTotals
     || (() => {
@@ -383,7 +406,10 @@ function Sales({ L, prevL, period, setPeriod }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">Total Loyalty Orders — 7 Days (In-Store / Digital Breakdown)</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>Total Loyalty Orders — 7 Days (In-Store / Digital Breakdown)</div>
+          <ExportCsvButton filename="Total Loyalty Orders 7 Days.csv" />
+        </div>
         <Table
           headers={[
             { label: 'Location' },
@@ -402,14 +428,20 @@ function Sales({ L, prevL, period, setPeriod }) {
       </div>
 
       <div className="chart-card" style={{ marginBottom: 16 }}>
-        <div className="chart-title">Loyalty Sales by Location — 7 Days</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className="chart-title" style={{ marginBottom: 0 }}>Loyalty Sales by Location — 7 Days</div>
+          <ExportImageButton filename="Loyalty Sales by Location.png" />
+        </div>
         <div style={{ height: 280 }}>
           <Bar data={salesByLocChart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
         </div>
       </div>
 
       <div className="table-card" style={{ marginBottom: 16 }}>
-        <div className="table-title">In-Store Loyalty Sales by Location — 7 Days</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>In-Store Loyalty Sales by Location — 7 Days</div>
+          <ExportCsvButton filename="In-Store Loyalty Sales by Location.csv" />
+        </div>
         <Table
           headers={[{ label: 'Location' }, { label: 'Orders', cls: 'right' }, { label: 'In-Store Loyalty Sales', cls: 'right' }]}
           rows={inStore.map(r => ({
@@ -428,7 +460,10 @@ function Sales({ L, prevL, period, setPeriod }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">Discounted (Disc) vs Non-Discounted (Non-Disc) — {period === 'weekly' ? '7 Days' : '28 Days'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>Discounted (Disc) vs Non-Discounted (Non-Disc) — {period === 'weekly' ? '7 Days' : '28 Days'}</div>
+          <ExportCsvButton filename="Discounted vs Non-Discounted.csv" />
+        </div>
         <Table
           headers={discCols}
           rows={disc.map(r => ({
@@ -439,11 +474,17 @@ function Sales({ L, prevL, period, setPeriod }) {
       </div>
       <div className="grid2" style={{ marginTop: 16 }}>
         <div className="chart-card">
-          <div className="chart-title">{period === 'weekly' ? '7 Days' : '28 Days'} Digital Loyalty Sales — Breakdown by Discounted Sales</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>{period === 'weekly' ? '7 Days' : '28 Days'} Digital Loyalty Sales — Breakdown by Discounted Sales</div>
+            <ExportImageButton filename="Digital Loyalty Sales Breakdown by Discounted Sales.png" />
+          </div>
           <Doughnut data={discSalesChart} options={doughnutOpts('$')} />
         </div>
         <div className="chart-card">
-          <div className="chart-title">{period === 'weekly' ? '7 Days' : '28 Days'} Digital Loyalty Orders — Breakdown by Discounted Orders</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>{period === 'weekly' ? '7 Days' : '28 Days'} Digital Loyalty Orders — Breakdown by Discounted Orders</div>
+            <ExportImageButton filename="Digital Loyalty Orders Breakdown by Discounted Orders.png" />
+          </div>
           <Doughnut data={discOrdersChart} options={doughnutOpts('n')} />
         </div>
       </div>
@@ -452,7 +493,7 @@ function Sales({ L, prevL, period, setPeriod }) {
 }
 
 // ─── App & Website Breakdown ────────────────────────────────────────────────
-function AppWeb({ L, period, setPeriod }) {
+function AppWeb({ L, period, setPeriod, isAdmin }) {
   const platRows = (period === 'weekly' ? L.weeklyPlatform : L.twentyEightDayPlatform) || [];
   const awRows   = (period === 'weekly' ? L.weeklyAppWeb : L.twentyEightDayAppWeb) || [];
   const pd = platRows.filter(r => r.platform !== 'Grand Total');
@@ -485,7 +526,10 @@ function AppWeb({ L, period, setPeriod }) {
       </div>
 
       <div className="table-card" style={{ marginBottom: 16 }}>
-        <div className="table-title">Platform Breakdown — {lbl}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>Platform Breakdown — {lbl}</div>
+          <ExportCsvButton filename="Platform Breakdown.csv" />
+        </div>
         <Table
           headers={[{ label: 'Platform' }, { label: 'Orders', cls: 'right' }, { label: 'Digital Loyalty Sales', cls: 'right' }]}
           rows={platRows.map(r => ({
@@ -497,17 +541,26 @@ function AppWeb({ L, period, setPeriod }) {
 
       <div className="charts-row" style={{ marginBottom: 16 }}>
         <div className="chart-card">
-          <div className="chart-title">Orders Share — {lbl}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>Orders Share — {lbl}</div>
+            <ExportImageButton filename="App Web Orders Share.png" />
+          </div>
           <Doughnut data={ordersChart} options={doughnutOpts('n')} />
         </div>
         <div className="chart-card">
-          <div className="chart-title">Sales Share — {lbl}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>Sales Share — {lbl}</div>
+            <ExportImageButton filename="App Web Sales Share.png" />
+          </div>
           <Doughnut data={salesChart} options={doughnutOpts('$')} />
         </div>
       </div>
 
       <div className="table-card" style={{ marginBottom: 16 }}>
-        <div className="table-title">App vs Web by Location — {lbl}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>App vs Web by Location — {lbl}</div>
+          <ExportCsvButton filename="App vs Web by Location.csv" />
+        </div>
         <Table
           headers={[
             { label: 'Location' },
@@ -526,7 +579,10 @@ function AppWeb({ L, period, setPeriod }) {
       </div>
 
       <div className="chart-card">
-        <div className="chart-title">App vs Web Sales{period === '28d' ? ' by Location — 28 Days' : ' — 7 Days'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="chart-title" style={{ marginBottom: 0 }}>App vs Web Sales{period === '28d' ? ' by Location — 28 Days' : ' — 7 Days'}</div>
+          <ExportImageButton filename="App vs Web Sales.png" />
+        </div>
         <div style={{ height: 280 }}>
           <Bar data={awBarChart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
         </div>
@@ -536,7 +592,7 @@ function AppWeb({ L, period, setPeriod }) {
 }
 
 // ─── Delivery & Pickup Breakdown ────────────────────────────────────────────
-function DelPick({ L, period, setPeriod }) {
+function DelPick({ L, period, setPeriod, isAdmin }) {
   const om = (period === 'weekly' ? L.weeklyOrderMethod : L.twentyEightDayOrderMethod) || [];
   const omRows = om.filter(r => r.method !== 'Grand Total');
 
@@ -560,7 +616,10 @@ function DelPick({ L, period, setPeriod }) {
       </div>
 
       <div className="table-card" style={{ marginBottom: 16 }}>
-        <div className="table-title">Delivery vs Pickup — {lbl}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>Delivery vs Pickup — {lbl}</div>
+          <ExportCsvButton filename="Delivery vs Pickup.csv" />
+        </div>
         <Table
           headers={[{ label: 'Order Method' }, { label: 'Orders', cls: 'right' }, { label: 'Digital Loyalty Sales', cls: 'right' }]}
           rows={om.map(r => ({
@@ -571,11 +630,17 @@ function DelPick({ L, period, setPeriod }) {
       </div>
       <div className="charts-row">
         <div className="chart-card">
-          <div className="chart-title">Orders Share — {lbl}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>Orders Share — {lbl}</div>
+            <ExportImageButton filename="Delivery Pickup Orders Share.png" />
+          </div>
           <Doughnut data={ordersChart} options={doughnutOpts('n')} />
         </div>
         <div className="chart-card">
-          <div className="chart-title">Sales Share — {lbl}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>Sales Share — {lbl}</div>
+            <ExportImageButton filename="Delivery Pickup Sales Share.png" />
+          </div>
           <Doughnut data={salesChart} options={doughnutOpts('$')} />
         </div>
       </div>

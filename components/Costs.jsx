@@ -4,6 +4,7 @@ import { useState, Fragment } from 'react';
 import '@/lib/chartSetup';
 import { Bar, Line } from 'react-chartjs-2';
 import Table from './Table';
+import { ExportCsvButton, ExportImageButton } from './ExportButtons';
 import { fmtPct, fmtVarPCColored } from '@/lib/fmt';
 import { weekInfoForLabel } from '@/lib/fiscalCalendar';
 
@@ -118,7 +119,8 @@ function computeWeightedTotal(rows, salesRows) {
   return { loc: 'Totals', laborAct, laborBud, cogsAct, cogsBud, pcAct, pcBud, varPC: pcAct - pcBud, primeMarginAct: 1 - pcAct };
 }
 
-export default function Costs({ data, prevData }) {
+export default function Costs({ data, prevData, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [subTab, setSubTab] = useState('single');
   const [view, setView] = useState('weekly');
   const [chartRange, setChartRange] = useState('trailing12');
@@ -558,21 +560,33 @@ export default function Costs({ data, prevData }) {
 
           <div className="charts-row">
             <div className="chart-card">
-              <div className="chart-title">Labor % — Actual vs Budget</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>Labor % — Actual vs Budget</div>
+                <ExportImageButton filename="Labor Actual vs Budget.png" />
+              </div>
               <Bar data={laborChart} options={baseOpts} />
             </div>
             <div className="chart-card">
-              <div className="chart-title">COGS % — Actual vs Budget</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>COGS % — Actual vs Budget</div>
+                <ExportImageButton filename="COGS Actual vs Budget.png" />
+              </div>
               <Bar data={cogsChart} options={baseOpts} />
             </div>
             <div className="chart-card">
-              <div className="chart-title">Prime Cost % — Actual vs Budget</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>Prime Cost % — Actual vs Budget</div>
+                <ExportImageButton filename="Prime Cost Actual vs Budget.png" />
+              </div>
               <Bar data={pcChart} options={baseOpts} />
             </div>
           </div>
 
           <div className="table-card">
-            <div className="table-title">All Locations</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+              <div className="table-title" style={{ marginBottom: 0 }}>All Locations</div>
+              <ExportCsvButton filename="All Locations.csv" />
+            </div>
             <Table
               headers={[
                 { label: 'Location' },
@@ -661,7 +675,10 @@ export default function Costs({ data, prevData }) {
 
           {showSingleTrends && (
             <div className="chart-card" style={{ marginBottom: 16 }}>
-              <div className="chart-title">Prime Cost Trend ({singleLoc}) · {CHART_RANGE_VIEWS.find(c => c.id === chartRange)?.label}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>Prime Cost Trend ({singleLoc}) · {CHART_RANGE_VIEWS.find(c => c.id === chartRange)?.label}</div>
+                <ExportImageButton filename="Prime Cost Trend.png" />
+              </div>
               <div style={{ height: 280 }}>
                 <Line data={primeCostChartData} options={trendChartOpts} />
               </div>
@@ -671,13 +688,19 @@ export default function Costs({ data, prevData }) {
           {showSingleTrends && (
             <div className="charts-row">
               <div className="chart-card">
-                <div className="chart-title">COGS by Category Trend ({singleLoc})</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div className="chart-title" style={{ marginBottom: 0 }}>COGS by Category Trend ({singleLoc})</div>
+                  <ExportImageButton filename="COGS by Category Trend.png" />
+                </div>
                 <div style={{ height: 280 }}>
                   <Line data={cogsByCatChartData} options={trendChartOpts} />
                 </div>
               </div>
               <div className="chart-card">
-                <div className="chart-title">Labor by Category Trend ({singleLoc})</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div className="chart-title" style={{ marginBottom: 0 }}>Labor by Category Trend ({singleLoc})</div>
+                  <ExportImageButton filename="Labor by Category Trend.png" />
+                </div>
                 <div style={{ height: 280 }}>
                   <Line data={laborByCatChartData} options={trendChartOpts} />
                 </div>
@@ -691,14 +714,17 @@ export default function Costs({ data, prevData }) {
                 <div className="chart-title" style={{ marginBottom: 0 }}>
                   Category Trend ({singleLoc}) · {CHART_RANGE_VIEWS.find(c => c.id === chartRange)?.label}
                 </div>
-                <select
-                  value={trendCategory}
-                  onChange={e => setTrendCategory(e.target.value)}
-                  style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#1a1f2e', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: "'Montserrat',sans-serif" }}
-                >
-                  <option value={ALL_CATEGORIES_KEY}>All Categories</option>
-                  {singleCogsCats.map(cat => <option key={cat.key} value={cat.key}>{cat.label}</option>)}
-                </select>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={trendCategory}
+                    onChange={e => setTrendCategory(e.target.value)}
+                    style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#1a1f2e', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: "'Montserrat',sans-serif" }}
+                  >
+                    <option value={ALL_CATEGORIES_KEY}>All Categories</option>
+                    {singleCogsCats.map(cat => <option key={cat.key} value={cat.key}>{cat.label}</option>)}
+                  </select>
+                  <ExportImageButton filename="Category Trend.png" />
+                </div>
               </div>
               <div style={{ height: 320 }}>
                 <Line data={trendChartData} options={categoryTrendOpts} />
@@ -708,7 +734,10 @@ export default function Costs({ data, prevData }) {
 
           {showSingleTrends && (
             <div className="table-card">
-              <div className="table-title">Line Items ({singleLoc})</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+                <div className="table-title" style={{ marginBottom: 0 }}>Line Items ({singleLoc})</div>
+                <ExportCsvButton filename="Line Items.csv" />
+              </div>
               <table>
                 <thead>
                   <tr>
@@ -733,7 +762,10 @@ export default function Costs({ data, prevData }) {
           {showSingleTrends && (
             <div className="charts-row">
               <div className="table-card" style={{ marginBottom: 0 }}>
-                <div className="table-title">Wins ({singleLoc})</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+                  <div className="table-title" style={{ marginBottom: 0 }}>Wins ({singleLoc})</div>
+                  <ExportCsvButton filename="Wins.csv" />
+                </div>
                 <table>
                   <thead>
                     <tr>
@@ -757,7 +789,10 @@ export default function Costs({ data, prevData }) {
                 </table>
               </div>
               <div className="table-card" style={{ marginBottom: 0 }}>
-                <div className="table-title">Watch ({singleLoc})</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+                  <div className="table-title" style={{ marginBottom: 0 }}>Watch ({singleLoc})</div>
+                  <ExportCsvButton filename="Watch.csv" />
+                </div>
                 <table>
                   <thead>
                     <tr>
@@ -785,18 +820,27 @@ export default function Costs({ data, prevData }) {
 
           <div className="charts-row">
             <div className="chart-card">
-              <div className="chart-title">Location Comparison — COGS %</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>Location Comparison — COGS %</div>
+                <ExportImageButton filename="Location Comparison COGS.png" />
+              </div>
               <Bar data={locCompCogsChart} options={locCompOpts} />
             </div>
             <div className="chart-card">
-              <div className="chart-title">Location Comparison — Labor %</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>Location Comparison — Labor %</div>
+                <ExportImageButton filename="Location Comparison Labor.png" />
+              </div>
               <Bar data={locCompLaborChart} options={locCompOpts} />
             </div>
           </div>
 
           {!!operatorNotesList.length && (
             <div className="table-card">
-              <div className="table-title">Operator Notes ({singleLoc})</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+                <div className="table-title" style={{ marginBottom: 0 }}>Operator Notes ({singleLoc})</div>
+                <ExportCsvButton filename="Operator Notes.csv" />
+              </div>
               <table>
                 <tbody>
                   {operatorNotesList.map(n => (
@@ -823,7 +867,10 @@ export default function Costs({ data, prevData }) {
           </div>
 
           <div className="table-card">
-            <div className="table-title">All Locations</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+              <div className="table-title" style={{ marginBottom: 0 }}>All Locations</div>
+              <ExportCsvButton filename="All Locations.csv" />
+            </div>
             <Table
               headers={[
                 { label: 'Location' },
@@ -845,15 +892,24 @@ export default function Costs({ data, prevData }) {
 
           <div className="charts-row">
             <div className="chart-card">
-              <div className="chart-title">Labor % — Actual vs Budget</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>Labor % — Actual vs Budget</div>
+                <ExportImageButton filename="Labor Actual vs Budget.png" />
+              </div>
               <Bar data={laborChart} options={baseOpts} />
             </div>
             <div className="chart-card">
-              <div className="chart-title">COGS % — Actual vs Budget</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>COGS % — Actual vs Budget</div>
+                <ExportImageButton filename="COGS Actual vs Budget.png" />
+              </div>
               <Bar data={cogsChart} options={baseOpts} />
             </div>
             <div className="chart-card">
-              <div className="chart-title">Prime Cost % — Actual vs Budget</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="chart-title" style={{ marginBottom: 0 }}>Prime Cost % — Actual vs Budget</div>
+                <ExportImageButton filename="Prime Cost Actual vs Budget.png" />
+              </div>
               <Bar data={pcChart} options={baseOpts} />
             </div>
           </div>
@@ -861,7 +917,10 @@ export default function Costs({ data, prevData }) {
           {showCatFeatures && (
             <div className="charts-row">
               <div className="table-card" style={{ marginBottom: 0 }}>
-                <div className="table-title">Location Compare — COGS</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+                  <div className="table-title" style={{ marginBottom: 0 }}>Location Compare — COGS</div>
+                  <ExportCsvButton filename="Location Compare COGS.csv" />
+                </div>
                 <table>
                   <thead>
                     <tr>
@@ -905,7 +964,10 @@ export default function Costs({ data, prevData }) {
                 </table>
               </div>
               <div className="table-card" style={{ marginBottom: 0 }}>
-                <div className="table-title">Location Compare — Labor</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+                  <div className="table-title" style={{ marginBottom: 0 }}>Location Compare — Labor</div>
+                  <ExportCsvButton filename="Location Compare Labor.csv" />
+                </div>
                 <table>
                   <thead>
                     <tr>
@@ -955,13 +1017,16 @@ export default function Costs({ data, prevData }) {
             <div className="table-card">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
                 <div className="table-title" style={{ marginBottom: 0 }}>Location Compare — COGS Subcategories</div>
-                <select
-                  value={compareSubCat}
-                  onChange={e => setCompareSubCat(e.target.value)}
-                  style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#1a1f2e', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: "'Montserrat',sans-serif" }}
-                >
-                  {(cogsCatByLoc?.MVT || []).map(cat => <option key={cat.key} value={cat.key}>{cat.label}</option>)}
-                </select>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={compareSubCat}
+                    onChange={e => setCompareSubCat(e.target.value)}
+                    style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#1a1f2e', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: "'Montserrat',sans-serif" }}
+                  >
+                    {(cogsCatByLoc?.MVT || []).map(cat => <option key={cat.key} value={cat.key}>{cat.label}</option>)}
+                  </select>
+                  <ExportCsvButton filename="Location Compare COGS Subcategories.csv" />
+                </div>
               </div>
               <table>
                 <thead>

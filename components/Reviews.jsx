@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
 import Table from './Table';
+import { ExportCsvButton, ExportImageButton } from './ExportButtons';
 import { fmtN } from '@/lib/fmt';
 
 const SOURCES = [
@@ -135,7 +136,7 @@ function computeTotal(rows, source) {
 
 // One reviews table (Google+Yelp or 3PD). Reused for the single per-source view
 // and for the 30-day view that stacks both kinds.
-function ReviewTable({ rows, kind, periodLabel }) {
+function ReviewTable({ rows, kind, periodLabel, isAdmin }) {
   const filtered = (rows || []).filter(r => kind !== 'thirdparty' || !EXCLUDED_3PD.includes(String(r.loc).trim()));
   const found = filtered.find(r => /^total$/i.test(r.loc));
   const total = found || computeTotal(filtered, kind) || { loc: 'Total', reviews: 0, rating: 0, s5: 0, errRate: 0 };
@@ -144,6 +145,9 @@ function ReviewTable({ rows, kind, periodLabel }) {
   const title = kind === 'instore'
     ? `In-Store Reviews — Google + Yelp (${periodLabel})`
     : `3rd Party Reviews — UE / DD / GH (${periodLabel})`;
+  const exportFilename = kind === 'instore'
+    ? 'In-Store Reviews — Google + Yelp.csv'
+    : '3rd Party Reviews — UE DD GH.csv';
   const headers = [
     { label: 'Location' },
     { label: '# Reviews', cls: 'right' },
@@ -156,7 +160,10 @@ function ReviewTable({ rows, kind, periodLabel }) {
   ];
   return (
     <div className="table-card">
-      <div className="table-title">{title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+        <div className="table-title" style={{ marginBottom: 0 }}>{title}</div>
+        <ExportCsvButton filename={exportFilename} />
+      </div>
       <Table
         headers={headers}
         rows={tableRows.map(r => ({
@@ -174,7 +181,8 @@ function ReviewTable({ rows, kind, periodLabel }) {
   );
 }
 
-export default function Reviews({ data, prevData }) {
+export default function Reviews({ data, prevData, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [source, setSource] = useState('instore');
   const [period, setPeriod] = useState('weekly');
   const [starLoc, setStarLoc] = useState('all');
@@ -258,6 +266,12 @@ export default function Reviews({ data, prevData }) {
   const chart2Title = source === 'instore'
     ? `Star Distribution — In-Store (${periodLabel})`
     : `Star Distribution — 3rd Party (${periodLabel})`;
+  const chart1Filename = source === 'instore'
+    ? 'Avg Rating by Location.png'
+    : 'Avg Rating by Location — 3rd Party.png';
+  const chart2Filename = source === 'instore'
+    ? 'Star Distribution — In-Store.png'
+    : 'Star Distribution — 3rd Party.png';
 
   return (
     <>
@@ -329,11 +343,14 @@ export default function Reviews({ data, prevData }) {
         )}
       </div>
 
-      <ReviewTable rows={rowsRaw} kind={source} periodLabel={periodLabel} />
+      <ReviewTable rows={rowsRaw} kind={source} periodLabel={periodLabel} isAdmin={isAdmin} />
 
       <div className="charts-row">
         <div className="chart-card">
-          <div className="chart-title">{chart1Title}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>{chart1Title}</div>
+            <ExportImageButton filename={chart1Filename} />
+          </div>
           <Bar
             data={ratingChart}
             options={{
@@ -346,13 +363,16 @@ export default function Reviews({ data, prevData }) {
         <div className="chart-card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
             <div className="chart-title" style={{ marginBottom: 0 }}>{chart2Title}</div>
-            <select
-              value={starLoc}
-              onChange={e => setStarLoc(e.target.value)}
-              style={{ background: '#f3f4f6', border: '1.5px solid var(--border)', color: '#1a1f2e', padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}
-            >
-              {STAR_LOCS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                value={starLoc}
+                onChange={e => setStarLoc(e.target.value)}
+                style={{ background: '#f3f4f6', border: '1.5px solid var(--border)', color: '#1a1f2e', padding: '4px 10px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: "'Montserrat', sans-serif" }}
+              >
+                {STAR_LOCS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <ExportImageButton filename={chart2Filename} />
+            </div>
           </div>
           <Bar
             data={starData}

@@ -231,19 +231,19 @@ export default function DashboardPage() {
 
       <main className="main">
         {tab === 'scorecard' ? (
-          <Scorecard />
+          <Scorecard userRole={userRole} />
         ) : (
           <>
             {loading && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)' }}><div className="spinner" style={{ margin: '0 auto 10px' }} />Loading week…</div>}
-            {!loading && tab === 'snapshot'      && <Snapshot data={data} prevData={prevData} openOnly={openOnly} setOpenOnly={setOpenOnly} openLocSet={openLocSet} />}
-            {!loading && tab === 'sales'         && <Sales data={data} prevData={prevData} openOnly={openOnly} setOpenOnly={setOpenOnly} openLocSet={openLocSet} />}
-            {!loading && tab === 'costs'         && <Costs data={data} prevData={prevData} />}
-            {!loading && tab === 'reviews'       && <Reviews data={data} prevData={prevData} />}
-            {!loading && tab === 'thirdparty'    && <ThirdParty data={data} prevData={prevData} />}
-            {!loading && tab === 'bikky'         && <Bikky data={data} />}
-            {!loading && tab === 'loyalty'       && <Loyalty data={data} prevData={prevData} />}
-            {!loading && tab === 'marketing'     && <Marketing data={data} prevData={prevData} />}
-            {!loading && tab === 'cateringsales' && <CateringSales data={data} />}
+            {!loading && tab === 'snapshot'      && <Snapshot data={data} prevData={prevData} openOnly={openOnly} setOpenOnly={setOpenOnly} openLocSet={openLocSet} userRole={userRole} />}
+            {!loading && tab === 'sales'         && <Sales data={data} prevData={prevData} openOnly={openOnly} setOpenOnly={setOpenOnly} openLocSet={openLocSet} userRole={userRole} />}
+            {!loading && tab === 'costs'         && <Costs data={data} prevData={prevData} userRole={userRole} />}
+            {!loading && tab === 'reviews'       && <Reviews data={data} prevData={prevData} userRole={userRole} />}
+            {!loading && tab === 'thirdparty'    && <ThirdParty data={data} prevData={prevData} userRole={userRole} />}
+            {!loading && tab === 'bikky'         && <Bikky data={data} userRole={userRole} />}
+            {!loading && tab === 'loyalty'       && <Loyalty data={data} prevData={prevData} userRole={userRole} />}
+            {!loading && tab === 'marketing'     && <Marketing data={data} prevData={prevData} userRole={userRole} />}
+            {!loading && tab === 'cateringsales' && <CateringSales data={data} userRole={userRole} />}
           </>
         )}
       </main>

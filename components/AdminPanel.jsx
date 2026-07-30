@@ -17,6 +17,7 @@ import {
   adminDeleteLocation,
 } from '@/lib/api';
 import { weekInfoForLabel } from '@/lib/fiscalCalendar';
+import { ExportCsvButton } from './ExportButtons';
 
 const FILE_TYPES = ['wbr', 'loyalty', 'catering'];
 const GRANS      = ['weekly', 'period', 'quarter'];
@@ -404,9 +405,12 @@ export default function AdminPanel() {
           {!status?.weeks?.length ? (
             <div style={{ ...card, color: 'var(--muted)' }}>No weeks found.</div>
           ) : (
-            <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>
-                All Weeks ({status.weeks.length})
+            <div style={card} className="admin-table-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  All Weeks ({status.weeks.length})
+                </div>
+                <ExportCsvButton filename="WBR Data.csv" containerClass="admin-table-card" />
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -528,9 +532,12 @@ export default function AdminPanel() {
           {!locations ? (
             <div style={{ color: 'var(--muted)', padding: 20 }}>Loading locations…</div>
           ) : (
-            <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>
-                All Locations ({Object.keys(locations).length})
+            <div style={card} className="admin-table-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  All Locations ({Object.keys(locations).length})
+                </div>
+                <ExportCsvButton filename="Locations.csv" containerClass="admin-table-card" />
               </div>
               {!Object.keys(locations).length ? (
                 <div style={{ color: 'var(--muted)', fontSize: 13 }}>No locations found. Add one above.</div>
@@ -609,9 +616,12 @@ export default function AdminPanel() {
           {!users ? (
             <div style={{ color: 'var(--muted)', padding: 20 }}>Loading users…</div>
           ) : (
-            <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>
-                All Users ({users.length})
+            <div style={card} className="admin-table-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  All Users ({users.length})
+                </div>
+                <ExportCsvButton filename="Users.csv" containerClass="admin-table-card" />
               </div>
               {!users.length ? (
                 <div style={{ color: 'var(--muted)', fontSize: 13 }}>No users found.</div>

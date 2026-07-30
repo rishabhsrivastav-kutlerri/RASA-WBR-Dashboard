@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Table from './Table';
+import { ExportCsvButton } from './ExportButtons';
 import { fmt$, fmtN } from '@/lib/fmt';
 
 const PROVIDERS = [
@@ -177,7 +178,7 @@ function VarChip({ curr, prev, kind = 'n', inverse = false }) {
   return <span className={`kpi-change ${cls}`}>{absLabel} {absTxt}{pctEl} vs LW</span>;
 }
 
-function UESection({ ue, prevUE }) {
+function UESection({ ue, prevUE, isAdmin }) {
   const tUE    = ue.perf?.find(r => /all stores/i.test(r.loc))    || {};
   const tUEOps = ue.ops?.find(r => /all stores/i.test(r.loc))     || {};
   const tUEAds = ue.ads?.find(r => /all campaign/i.test(r.campaign)) || {};
@@ -215,7 +216,10 @@ function UESection({ ue, prevUE }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">UE Performance by Location</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>UE Performance by Location</div>
+          <ExportCsvButton filename="UE Performance by Location.csv" />
+        </div>
         <Table
           headers={withSheetHeaders(ue.headers?.perf, [
             { label: 'Location' },
@@ -234,7 +238,10 @@ function UESection({ ue, prevUE }) {
       </div>
 
       <div className="table-card ops-table">
-        <div className="table-title">UE Operations by Location</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>UE Operations by Location</div>
+          <ExportCsvButton filename="UE Operations by Location.csv" />
+        </div>
         <Table
           headers={withSheetHeaders(ue.headers?.ops, [
             { label: 'Location' },
@@ -268,7 +275,10 @@ function UESection({ ue, prevUE }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">UE Ads &amp; Campaigns</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>UE Ads &amp; Campaigns</div>
+          <ExportCsvButton filename="UE Ads and Campaigns.csv" />
+        </div>
         <Table
           headers={withSheetHeaders(ue.headers?.ads, [
             { label: 'Campaign' },
@@ -355,7 +365,7 @@ function DDAdsTable({ rows, headers }) {
   );
 }
 
-function DDSection({ dd, prevDD }) {
+function DDSection({ dd, prevDD, isAdmin }) {
   const tDD    = dd.perf?.find(r => /all stores/i.test(r.loc))  || {};
   const tDDOps = dd.ops?.find(r => /all stores/i.test(r.loc))   || {};
   const tDDAds = dd.ads?.find(r => /all stores/i.test(r.loc))   || {};
@@ -401,7 +411,10 @@ function DDSection({ dd, prevDD }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">DD Performance by Location</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>DD Performance by Location</div>
+          <ExportCsvButton filename="DD Performance by Location.csv" />
+        </div>
         <Table
           headers={withSheetHeaders(dd.headers?.perf, [
             { label: 'Location' },
@@ -419,7 +432,10 @@ function DDSection({ dd, prevDD }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">DD Rating Distribution by Location</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>DD Rating Distribution by Location</div>
+          <ExportCsvButton filename="DD Rating Distribution by Location.csv" />
+        </div>
         <Table
           headers={withSheetHeaders(dd.headers?.ratings, [
             { label: 'Location' },
@@ -442,7 +458,10 @@ function DDSection({ dd, prevDD }) {
       </div>
 
       <div className="table-card ops-table">
-        <div className="table-title">DD Operations by Location</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>DD Operations by Location</div>
+          <ExportCsvButton filename="DD Operations by Location.csv" />
+        </div>
         <Table
           headers={withSheetHeaders(dd.headers?.ops, [
             { label: 'Location' },
@@ -474,14 +493,18 @@ function DDSection({ dd, prevDD }) {
       </div>
 
       <div className="table-card">
-        <div className="table-title">DD Promotions &amp; Sponsored Ads</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>DD Promotions &amp; Sponsored Ads</div>
+          <ExportCsvButton filename="DD Promotions and Sponsored Ads.csv" />
+        </div>
         <DDAdsTable rows={dd.ads || []} headers={dd.headers} />
       </div>
     </>
   );
 }
 
-export default function ThirdParty({ data, prevData }) {
+export default function ThirdParty({ data, prevData, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [prov, setProv] = useState('ue');
   const ue     = data?.ue     || {};
   const dd     = data?.dd     || {};
@@ -499,7 +522,7 @@ export default function ThirdParty({ data, prevData }) {
         </div>
       </div>
 
-      {prov === 'ue' ? <UESection ue={ue} prevUE={prevUE} /> : <DDSection dd={dd} prevDD={prevDD} />}
+      {prov === 'ue' ? <UESection ue={ue} prevUE={prevUE} isAdmin={isAdmin} /> : <DDSection dd={dd} prevDD={prevDD} isAdmin={isAdmin} />}
     </>
   );
 }

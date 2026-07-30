@@ -4,6 +4,7 @@ import { useState } from 'react';
 import '@/lib/chartSetup';
 import { Bar } from 'react-chartjs-2';
 import Table from './Table';
+import { ExportCsvButton, ExportImageButton } from './ExportButtons';
 import { fmt$, fmtVar, fmtVarColored } from '@/lib/fmt';
 
 const VIEWS = [
@@ -13,7 +14,8 @@ const VIEWS = [
   { id: 'ytd',    label: 'Year to Date' },
 ];
 
-export default function Snapshot({ data, prevData, openOnly, setOpenOnly, openLocSet }) {
+export default function Snapshot({ data, prevData, openOnly, setOpenOnly, openLocSet, userRole }) {
+  const isAdmin = userRole === 'admin';
   const [view, setView] = useState('weekly');
   // QTD only exists in workbooks that ship the QTD sheets (newer weeks).
   const views = data.qtdAvailable ? VIEWS : VIEWS.filter(v => v.id !== 'qtd');
@@ -111,7 +113,10 @@ export default function Snapshot({ data, prevData, openOnly, setOpenOnly, openLo
 
       <div className="charts-row">
         <div className="chart-card">
-          <div className="chart-title">Sales by Location</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>Sales by Location</div>
+            <ExportImageButton filename="Sales by Location.png" />
+          </div>
           <Bar data={salesChart} options={{
             responsive: true,
             plugins: {
@@ -121,7 +126,10 @@ export default function Snapshot({ data, prevData, openOnly, setOpenOnly, openLo
           }} />
         </div>
         <div className="chart-card">
-          <div className="chart-title">Variance % vs LY</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>Variance % vs LY</div>
+            <ExportImageButton filename="Variance vs LY.png" />
+          </div>
           <Bar data={varChart} options={{
             responsive: true,
             plugins: { legend: { display: false } },
@@ -131,7 +139,10 @@ export default function Snapshot({ data, prevData, openOnly, setOpenOnly, openLo
       </div>
 
       <div className="table-card">
-        <div className="table-title">Location Results</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+          <div className="table-title" style={{ marginBottom: 0 }}>Location Results</div>
+          <ExportCsvButton filename="Location Results.csv" />
+        </div>
         <Table
           headers={[
             { label: 'Location' },
