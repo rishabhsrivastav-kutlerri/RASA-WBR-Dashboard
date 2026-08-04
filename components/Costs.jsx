@@ -130,6 +130,17 @@ export default function Costs({ data, prevData, userRole }) {
   const [compareSubCat, setCompareSubCat] = useState('food');
   const [trendCategory, setTrendCategory] = useState(ALL_CATEGORIES_KEY);
 
+  // Clicking a location name in Compare all stores' "All Locations" table
+  // jumps to Single Restaurant with that location selected. "Totals" maps to
+  // the "All Locations" aggregate view since it isn't one of the 4 real
+  // locations.
+  const goToLocation = loc => {
+    const target = LOCATION_OPTIONS.includes(loc) ? loc : (/^totals?$/i.test(loc) ? 'All Locations' : null);
+    if (!target) return;
+    setSingleLoc(target);
+    setSubTab('single');
+  };
+
   // Period 7 Week 3 (Week of July 13) onwards is shown with the immediately
   // previous week's Costs data until its own PCR file has been uploaded — a
   // real per-location primeMarginAct on a non-Totals row is the signal that
@@ -838,7 +849,7 @@ export default function Costs({ data, prevData, userRole }) {
           {!!operatorNotesList.length && (
             <div className="table-card">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
-                <div className="table-title" style={{ marginBottom: 0 }}>Operator Notes ({singleLoc})</div>
+                <div className="table-title" style={{ marginBottom: 0 }}>Operator Notes ({singleLoc})-latest week</div>
                 <ExportCsvButton filename="Operator Notes.csv" />
               </div>
               <table>
@@ -871,23 +882,36 @@ export default function Costs({ data, prevData, userRole }) {
               <div className="table-title" style={{ marginBottom: 0 }}>All Locations</div>
               <ExportCsvButton filename="All Locations.csv" />
             </div>
-            <Table
-              headers={[
-                { label: 'Location' },
-                { label: 'Labor Act', cls: 'right' },
-                { label: 'Labor Bud', cls: 'right' },
-                { label: 'COGS Act',  cls: 'right' },
-                { label: 'COGS Bud',  cls: 'right' },
-                { label: 'PC Act',    cls: 'right' },
-                { label: 'PC Bud',    cls: 'right' },
-                { label: 'Var PC',    cls: 'right' },
-                { label: 'Prime Margin Act', cls: 'right' },
-              ]}
-              rows={displayRows.map(r => ({
-                _cls: /^totals?$/i.test(r.loc) ? 'total-row' : '',
-                cells: [r.loc, fmtPct(r.laborAct), fmtPct(r.laborBud), fmtPct(r.cogsAct), fmtPct(r.cogsBud), fmtPct(r.pcAct), fmtPct(r.pcBud), fmtVarPCColored(r.varPC), fmtPct(r.primeMarginAct)],
-              }))}
-            />
+            <table>
+              <thead>
+                <tr>
+                  <th>Location</th>
+                  <th className="right">Labor Act</th>
+                  <th className="right">Labor Bud</th>
+                  <th className="right">COGS Act</th>
+                  <th className="right">COGS Bud</th>
+                  <th className="right">PC Act</th>
+                  <th className="right">PC Bud</th>
+                  <th className="right">Var PC</th>
+                  <th className="right">Prime Margin Act</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayRows.map((r, i) => (
+                  <tr key={i} className={/^totals?$/i.test(r.loc) ? 'total-row' : ''}>
+                    <td style={{ cursor: 'pointer' }} onClick={() => goToLocation(r.loc)}>{r.loc}</td>
+                    <td className="right">{fmtPct(r.laborAct)}</td>
+                    <td className="right">{fmtPct(r.laborBud)}</td>
+                    <td className="right">{fmtPct(r.cogsAct)}</td>
+                    <td className="right">{fmtPct(r.cogsBud)}</td>
+                    <td className="right">{fmtPct(r.pcAct)}</td>
+                    <td className="right">{fmtPct(r.pcBud)}</td>
+                    <td className="right" dangerouslySetInnerHTML={{ __html: fmtVarPCColored(r.varPC) }} />
+                    <td className="right">{fmtPct(r.primeMarginAct)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           <div className="charts-row">
