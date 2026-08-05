@@ -63,7 +63,7 @@ export async function GET(request, { params }) {
       })
     );
 
-    const data = parseWeekFolder(tmpDir);
+    const data = await parseWeekFolder(tmpDir);
 
     // Best-effort carry-forward, same as the build-time precompute chain
     // (see scripts/precompute.mjs): this branch only runs for a week whose

@@ -34,12 +34,27 @@ function writeJson(relPath, data) {
   return fs.statSync(file).size;
 }
 
+// Every fingerprint also folds in a hash of the parser code itself — without
+// this, fixing a parsing bug wouldn't actually change any cached week's
+// fingerprint (its source .xlsx files haven't changed), so the cache would
+// keep serving the pre-fix output until someone re-uploads that week's file.
+const PARSER_SOURCE_FILES = [
+  path.join(ROOT, 'lib', 'xlsxParser.js'),
+  path.join(ROOT, 'lib', 'scorecard.js'),
+  path.join(ROOT, 'lib', 'fiscalCalendar.js'),
+];
+const CODE_VERSION = crypto.createHash('sha1')
+  .update(PARSER_SOURCE_FILES.map(p => { try { return fs.readFileSync(p); } catch { return 'MISSING'; } }).join(''))
+  .digest('hex');
+
 // Fingerprint = hash of every input file's name + content that could affect
-// this item's parsed output. Content-based, not mtime-based — a fresh git
-// clone resets every file's mtime to checkout time, so mtime can't tell
-// "changed" from "unchanged" across deploys the way file content can.
+// this item's parsed output, plus CODE_VERSION above. Content-based, not
+// mtime-based — a fresh git clone resets every file's mtime to checkout
+// time, so mtime can't tell "changed" from "unchanged" across deploys the
+// way file content can.
 function fingerprint(filePaths) {
   const hash = crypto.createHash('sha1');
+  hash.update(CODE_VERSION);
   for (const p of filePaths.slice().sort()) {
     hash.update(p);
     try { hash.update(fs.readFileSync(p)); } catch { hash.update('MISSING'); }
@@ -118,7 +133,7 @@ async function main() {
         prevCostsByCategory = data.costsByCategory || prevCostsByCategory;
         cachedWeeks++;
       } else {
-        data = parseWeekFolder(path.join('data', week));
+        data = await parseWeekFolder(path.join('data', week));
         if (data.costsByCategory) {
           data.costsByCategory = mergeCostsByCategoryHistory(data.costsByCategory, prevCostsByCategory);
           prevCostsByCategory = data.costsByCategory;
