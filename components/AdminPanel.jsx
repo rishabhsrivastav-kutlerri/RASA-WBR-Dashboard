@@ -76,6 +76,13 @@ function FileCell({ present, onView, onDelete, onUpload }) {
 function UploadModal({ prefillWeek, prefillType, onClose, onDone }) {
   const [weekName, setWeekName] = useState(prefillWeek || '');
   const [fileType, setFileType] = useState(prefillType || 'wbr');
+  // FILE_TYPES deliberately excludes 'pcr' so the generic "+Upload New Week"
+  // flow (prefillType 'wbr') never offers it for weeks that shouldn't have
+  // one. When opened via the gated per-row PCR cell instead (prefillType
+  // 'pcr'), the dropdown needs a "Pcr" option too — otherwise it's stuck
+  // showing a value with no matching <option>, looking like the wrong type
+  // is selected even though fileType itself is correctly 'pcr'.
+  const typeOptions = prefillType === 'pcr' ? [...FILE_TYPES, 'pcr'] : FILE_TYPES;
   const [file,     setFile]     = useState(null);
   const [busy,     setBusy]     = useState(false);
   const [msg,      setMsg]      = useState('');
@@ -110,7 +117,7 @@ function UploadModal({ prefillWeek, prefillType, onClose, onDone }) {
           <div>
             <label style={lbl}>File Type</label>
             <select style={inp} value={fileType} onChange={e => setFileType(e.target.value)}>
-              {FILE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+              {typeOptions.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
           </div>
           <div>
