@@ -97,14 +97,25 @@ function MetricsTable({ metrics, cols }) {
   );
 }
 
+// These 4 outbound-result metrics' trend charts are shown first, ahead of
+// the rest (which otherwise starts with "# Calls / Week") — this only
+// reorders the chart grid below, not the metrics prop itself, so the
+// "Outbound Catering Team — Input & Output Metrics" table above (which
+// shares this same array) keeps its original sheet row order.
+const OUTBOUND_TREND_FIRST = ['Outbound - Orders Closed', 'Outbound - Orders Confirmed', 'Outbound - Order Value', 'Outbound - ROI'];
+
 function OutboundTrendGrid({ metrics, isAdmin }) {
   const cols = metrics[0]?._cols;
   if (!cols) return null;
   const labels = [cols.c1, cols.c2, cols.c3, cols.c4, cols.c5];
+  const orderedMetrics = [
+    ...metrics.filter(r => OUTBOUND_TREND_FIRST.includes(r.metric)),
+    ...metrics.filter(r => !OUTBOUND_TREND_FIRST.includes(r.metric)),
+  ];
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
-      {metrics.map((r, i) => {
+      {orderedMetrics.map((r, i) => {
         const isDollar = /Order Value/i.test(r.metric);
         const isPct    = /^%/.test(r.metric);
         const data = {

@@ -55,7 +55,7 @@ const CATERING_EMAIL_HEADERS = [
   { label: 'Sent',        cls: 'right' },
   { label: 'Delivered',   cls: 'right' },
   { label: 'Bounced',     cls: 'right' },
-  { label: 'Complaint',   cls: 'right' },
+  { label: 'Spam Complaint', cls: 'right' },
   { label: 'Unsubscribe', cls: 'right' },
   { label: 'Opened',      cls: 'right' },
   { label: 'Clicked',     cls: 'right' },
