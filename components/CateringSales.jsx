@@ -223,6 +223,7 @@ function CustomerBreakdownTable({ rows }) {
 export default function CateringSales({ data, userRole }) {
   const isAdmin = userRole === 'admin';
   const [view, setView] = useState('outbound');
+  const [wowView, setWowView] = useState('outbound');
   const cs = data.catSales || {};
 
   const summary          = cs.summary || [];
@@ -300,6 +301,106 @@ export default function CateringSales({ data, userRole }) {
         </div>
       )}
 
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div className="toggle-group">
+          {VIEWS.map(v => (
+            <button key={v.id} className={`toggle-btn${wowView === v.id ? ' active' : ''}`} onClick={() => setWowView(v.id)}>{v.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {wowView === 'outbound' && trend.length > 0 && (
+        <div className="chart-card" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>WoW — Catering Trend — Outbound</div>
+            <ExportImageButton filename="WoW Catering Trend Outbound.png" />
+          </div>
+          <Line
+            data={{
+              labels: trend.map(t => t.week),
+              datasets: [
+                {
+                  label: 'Outbound Order Value',
+                  data: tVals,
+                  borderColor: '#9f7cef',
+                  backgroundColor: 'rgba(159,124,239,0.06)',
+                  borderWidth: 2,
+                  pointRadius: 3,
+                  pointBackgroundColor: '#9f7cef',
+                  tension: 0.1,
+                  fill: true,
+                },
+                {
+                  label: 'Trend',
+                  data: trendData,
+                  borderColor: '#9ca3af',
+                  backgroundColor: 'transparent',
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0,
+                  fill: false,
+                  borderDash: [6, 4],
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              plugins: { legend: { position: 'bottom' } },
+              scales: {
+                x: { ticks: { color: '#6b7280', maxRotation: 45, minRotation: 45, font: { size: 10 } }, grid: { color: '#e5e7eb' } },
+                y: { ticks: { color: '#6b7280', callback: v => '$' + v.toLocaleString() }, grid: { color: '#e5e7eb' } },
+              },
+            }}
+          />
+        </div>
+      )}
+
+      {wowView === 'inbound' && ibTrend.length > 0 && (
+        <div className="chart-card" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="chart-title" style={{ marginBottom: 0 }}>WoW — Catering Trend — Inbound</div>
+            <ExportImageButton filename="WoW Catering Trend Inbound.png" />
+          </div>
+          <Line
+            data={{
+              labels: ibTrend.map(t => t.week),
+              datasets: [
+                {
+                  label: 'Inbound Order Value',
+                  data: ibVals,
+                  borderColor: '#9f7cef',
+                  backgroundColor: 'rgba(159,124,239,0.06)',
+                  borderWidth: 2,
+                  pointRadius: 3,
+                  pointBackgroundColor: '#9f7cef',
+                  tension: 0.1,
+                  fill: true,
+                },
+                {
+                  label: 'Trend',
+                  data: ibTrendData,
+                  borderColor: '#9ca3af',
+                  backgroundColor: 'transparent',
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  tension: 0,
+                  fill: false,
+                  borderDash: [6, 4],
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              plugins: { legend: { position: 'bottom' } },
+              scales: {
+                x: { ticks: { color: '#6b7280', maxRotation: 45, minRotation: 45, font: { size: 10 } }, grid: { color: '#e5e7eb' } },
+                y: { ticks: { color: '#6b7280', callback: v => '$' + v.toLocaleString() }, grid: { color: '#e5e7eb' } },
+              },
+            }}
+          />
+        </div>
+      )}
+
       {cols && <OutboundTrendGrid metrics={metrics} isAdmin={isAdmin} />}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 12 }}>
@@ -348,97 +449,6 @@ export default function CateringSales({ data, userRole }) {
         </>
       )}
 
-      {view === 'outbound' && trend.length > 0 && (
-        <div className="chart-card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div className="chart-title" style={{ marginBottom: 0 }}>WoW — Catering Trend — Outbound</div>
-            <ExportImageButton filename="WoW Catering Trend Outbound.png" />
-          </div>
-          <Line
-            data={{
-              labels: trend.map(t => t.week),
-              datasets: [
-                {
-                  label: 'Outbound Order Value',
-                  data: tVals,
-                  borderColor: '#9f7cef',
-                  backgroundColor: 'rgba(159,124,239,0.06)',
-                  borderWidth: 2,
-                  pointRadius: 3,
-                  pointBackgroundColor: '#9f7cef',
-                  tension: 0.1,
-                  fill: true,
-                },
-                {
-                  label: 'Trend',
-                  data: trendData,
-                  borderColor: '#9ca3af',
-                  backgroundColor: 'transparent',
-                  borderWidth: 1.5,
-                  pointRadius: 0,
-                  tension: 0,
-                  fill: false,
-                  borderDash: [6, 4],
-                },
-              ],
-            }}
-            options={{
-              responsive: true,
-              plugins: { legend: { position: 'bottom' } },
-              scales: {
-                x: { ticks: { color: '#6b7280', maxRotation: 45, minRotation: 45, font: { size: 10 } }, grid: { color: '#e5e7eb' } },
-                y: { ticks: { color: '#6b7280', callback: v => '$' + v.toLocaleString() }, grid: { color: '#e5e7eb' } },
-              },
-            }}
-          />
-        </div>
-      )}
-
-      {view === 'inbound' && ibTrend.length > 0 && (
-        <div className="chart-card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div className="chart-title" style={{ marginBottom: 0 }}>WoW — Catering Trend — Inbound</div>
-            <ExportImageButton filename="WoW Catering Trend Inbound.png" />
-          </div>
-          <Line
-            data={{
-              labels: ibTrend.map(t => t.week),
-              datasets: [
-                {
-                  label: 'Inbound Order Value',
-                  data: ibVals,
-                  borderColor: '#9f7cef',
-                  backgroundColor: 'rgba(159,124,239,0.06)',
-                  borderWidth: 2,
-                  pointRadius: 3,
-                  pointBackgroundColor: '#9f7cef',
-                  tension: 0.1,
-                  fill: true,
-                },
-                {
-                  label: 'Trend',
-                  data: ibTrendData,
-                  borderColor: '#9ca3af',
-                  backgroundColor: 'transparent',
-                  borderWidth: 1.5,
-                  pointRadius: 0,
-                  tension: 0,
-                  fill: false,
-                  borderDash: [6, 4],
-                },
-              ],
-            }}
-            options={{
-              responsive: true,
-              plugins: { legend: { position: 'bottom' } },
-              scales: {
-                x: { ticks: { color: '#6b7280', maxRotation: 45, minRotation: 45, font: { size: 10 } }, grid: { color: '#e5e7eb' } },
-                y: { ticks: { color: '#6b7280', callback: v => '$' + v.toLocaleString() }, grid: { color: '#e5e7eb' } },
-              },
-            }}
-          />
-        </div>
-      )}
     </>
   );
 }
