@@ -228,7 +228,13 @@ export default function CateringSales({ data, userRole }) {
 
   const summary          = cs.summary || [];
   const customerBreakdown = cs.customerBreakdown || [];
-  const metrics = cs.outboundMetrics || [];
+  // Period 9 Week 1 (Week of Aug 24) only — "# Emails / Week" and "# Opens"
+  // are dropped from both the Input & Output Metrics table and the 5-Week
+  // Trend chart grid below (they share this same array). Every other week
+  // keeps showing both rows as before.
+  const HIDDEN_METRICS_BY_WEEK = { 'Week of Aug 24': ['# Emails / Week', '# Opens'] };
+  const hiddenMetricsThisWeek = HIDDEN_METRICS_BY_WEEK[data.label] || [];
+  const metrics = (cs.outboundMetrics || []).filter(r => !hiddenMetricsThisWeek.includes(r.metric));
   const cols    = metrics[0]?._cols;
 
   const obOrders = cs.orders?.outbound || cs.outboundOrders || [];
