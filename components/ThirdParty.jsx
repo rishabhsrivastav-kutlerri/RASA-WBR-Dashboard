@@ -120,18 +120,21 @@ function complaintCell(v) {
   return <span style={{ fontSize: 12, color: '#b45309' }}>{v}</span>;
 }
 function loveBadge(v) {
+  if (v === 'NA') return <span className="badge neutral">NA</span>;
   // V4:V8 — DD Love %: >=60% green, 40-60% yellow, <40% red
   const n = Number(v) || 0;
   const cls = n >= 0.6 ? 'green' : n >= 0.4 ? 'amber' : 'red';
   return <span className={`badge ${cls}`}>{(n * 100).toFixed(1)}%</span>;
 }
 function likeBadge(v) {
+  if (v === 'NA') return <span className="badge neutral">NA</span>;
   // W4:W8 — DD Like %: >=50% green, 30-50% yellow, <30% red
   const n = Number(v) || 0;
   const cls = n >= 0.5 ? 'green' : n >= 0.3 ? 'amber' : 'red';
   return <span className={`badge ${cls}`}>{(n * 100).toFixed(1)}%</span>;
 }
 function dislikeBadge(v) {
+  if (v === 'NA') return <span className="badge neutral">NA</span>;
   // X4:X8 — DD Dislike %: <=5.9% green, 6-12% yellow, >=12% red
   const n = Number(v) || 0;
   const cls = n <= 0.059 ? 'green' : n < 0.12 ? 'amber' : 'red';

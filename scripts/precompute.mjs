@@ -23,7 +23,15 @@ import { weekInfoForLabel, weekNumForLabel } from '../lib/fiscalCalendar.js';
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, 'generated');
 const WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'precompute-worker.mjs');
-const TSX_BIN = path.join(ROOT, 'node_modules', '.bin', 'tsx');
+// On Windows, node_modules/.bin/tsx is a shell shim with no extension (plus a
+// .cmd wrapper alongside it) — execFile can't exec either one directly
+// without a shell (ENOENT on the extensionless file, EINVAL on the .cmd),
+// unlike on Linux/Mac where the extensionless shim is a real executable
+// script. Vercel's build servers are Linux, so this only bit local Windows
+// dev — use the .cmd + shell:true only on win32, keep the direct exec
+// everywhere else.
+const IS_WIN = process.platform === 'win32';
+const TSX_BIN = path.join(ROOT, 'node_modules', '.bin', IS_WIN ? 'tsx.cmd' : 'tsx');
 
 // How many weeks/scorecards to parse at once, each in its own process (real
 // parallelism — see precompute-worker.mjs for why that's necessary). Capped
@@ -33,13 +41,24 @@ const TSX_BIN = path.join(ROOT, 'node_modules', '.bin', 'tsx');
 // given Vercel plan's build machine warrants a different number.
 const CONCURRENCY = Number(process.env.PRECOMPUTE_CONCURRENCY) || Math.min(os.cpus().length, 6);
 
+// shell:true on Windows hands the joined argv straight to cmd.exe without
+// quoting any argument (Node does NOT do this itself — see the DEP0190
+// warning) — a week name like "Week of Aug 17" would otherwise be split into
+// 4 separate argv entries by cmd.exe's own whitespace tokenizing. Quote each
+// arg ourselves and pair with windowsVerbatimArguments so Node doesn't also
+// try to re-escape our already-quoted string.
+const winQuote = s => '"' + String(s).replace(/"/g, '\\"') + '"';
+
 // Runs one item in its own process via precompute-worker.mjs. Never rejects —
 // callers get { ok:false, error } for both a clean thrown error inside the
 // worker and an unexpected crash (non-JSON / non-zero exit), so a single bad
 // week/scorecard can't take down the whole precompute run.
 function runWorker(mode, args) {
   return new Promise((resolve) => {
-    execFile(TSX_BIN, [WORKER, mode, ...args], { maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+    const rawArgs = [WORKER, mode, ...args];
+    const execArgs = IS_WIN ? rawArgs.map(winQuote) : rawArgs;
+    const opts = { maxBuffer: 64 * 1024 * 1024, shell: IS_WIN, windowsVerbatimArguments: IS_WIN };
+    execFile(TSX_BIN, execArgs, opts, (err, stdout) => {
       try {
         resolve(JSON.parse(stdout));
       } catch {
