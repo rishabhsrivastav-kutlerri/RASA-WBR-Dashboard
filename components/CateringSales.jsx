@@ -189,6 +189,27 @@ function SummaryByDirTable({ rows }) {
   );
 }
 
+function LocationWiseTable({ cols, rows }) {
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Metrics</th>
+          {cols.map(c => <th key={c} className="right">{c}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>
+            <td>{r.metric}</td>
+            {cols.map(c => <td key={c} className="right">{r[c]}</td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function CustomerBreakdownTable({ rows }) {
   const totalRow = rows.length > 1 ? {
     label:   'Total',
@@ -228,17 +249,22 @@ export default function CateringSales({ data, userRole }) {
 
   const summary          = cs.summary || [];
   const customerBreakdown = cs.customerBreakdown || [];
-  // Period 9 Weeks 1-2 (Week of Aug 24, Week of Aug 31) only — "# Emails /
-  // Week" and "# Opens" are dropped from both the Input & Output Metrics
-  // table and the 5-Week Trend chart grid below (they share this same
-  // array). Every other week keeps showing both rows as before.
+  // Period 9 Weeks 1-3 (Week of Aug 24, Week of Aug 31, Week of Sep 7) only —
+  // "# Emails / Week" and "# Opens" are dropped from both the Input & Output
+  // Metrics table and the 5-Week Trend chart grid below (they share this
+  // same array). Every other week keeps showing both rows as before.
   const HIDDEN_METRICS_BY_WEEK = {
     'Week of Aug 24': ['# Emails / Week', '# Opens'],
     'Week of Aug 31': ['# Emails / Week', '# Opens'],
+    'Week of Sep 7': ['# Emails / Week', '# Opens'],
   };
   const hiddenMetricsThisWeek = HIDDEN_METRICS_BY_WEEK[data.label] || [];
   const metrics = (cs.outboundMetrics || []).filter(r => !hiddenMetricsThisWeek.includes(r.metric));
   const cols    = metrics[0]?._cols;
+  // Only present starting Week of Sep 7 onward — the parser only produces
+  // this when the "Location Wise" sheet has a block for the current week, so
+  // no week-label gating is needed here; older weeks simply have no data.
+  const locationWise = cs.locationWiseMetrics || null;
 
   const obOrders = cs.orders?.outbound || cs.outboundOrders || [];
   const ibOrders = cs.orders?.inbound  || cs.inboundOrders  || [];
@@ -456,6 +482,16 @@ export default function CateringSales({ data, userRole }) {
             <SummaryByDirTable rows={ibSum} />
           </div>
         </>
+      )}
+
+      {locationWise && (
+        <div className="table-card" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div className="table-title" style={{ marginBottom: 0 }}>Catering — Location Wise Metrics</div>
+            <ExportCsvButton filename="Catering Location Wise Metrics.csv" />
+          </div>
+          <LocationWiseTable cols={locationWise.cols} rows={locationWise.rows} />
+        </div>
       )}
 
     </>
