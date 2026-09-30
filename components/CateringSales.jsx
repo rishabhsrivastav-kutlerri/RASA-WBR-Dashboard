@@ -69,7 +69,7 @@ function MetricsTable({ metrics, cols }) {
           <th className="right">{cols.c4}</th>
           <th className="right">{cols.c5}</th>
           <th className="right">Weekly Plan</th>
-          <th className="right">Overall</th>
+          <th className="right">Rolling 12 Months</th>
         </tr>
       </thead>
       <tbody>
@@ -202,7 +202,18 @@ function LocationWiseTable({ cols, rows }) {
         {rows.map((r, i) => (
           <tr key={i}>
             <td>{r.metric}</td>
-            {cols.map(c => <td key={c} className="right">{r[c]}</td>)}
+            {cols.map(c => {
+              const v = r[c];
+              const tag = r.bgs && r.bgs[c];
+              const cls = tag ? BG_CLASS[tag] : null;
+              return (
+                <td key={c} className="right">
+                  {cls && v != null && v !== '-' && v !== ''
+                    ? <span className={`badge ${cls}`}>{v}</span>
+                    : v}
+                </td>
+              );
+            })}
           </tr>
         ))}
       </tbody>
