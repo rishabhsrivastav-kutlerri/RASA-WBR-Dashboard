@@ -186,12 +186,34 @@ export default function DashboardPage() {
     if (first) setWeek(first.week);
   }
 
+  // Folder labels abbreviate some months ("Week of Sep 21") and spell others
+  // out in full ("Week of July 13") depending on how the week was named —
+  // expand to the full month name either way for the header subtitle, e.g.
+  // "Week of September 21".
+  const MONTH_FULL = {
+    jan: 'January', january: 'January', feb: 'February', february: 'February',
+    mar: 'March', march: 'March', apr: 'April', april: 'April', may: 'May',
+    jun: 'June', june: 'June', jul: 'July', july: 'July',
+    aug: 'August', august: 'August', sep: 'September', sept: 'September', september: 'September',
+    oct: 'October', october: 'October', nov: 'November', november: 'November',
+    dec: 'December', december: 'December',
+  };
+  function fullWeekLabel(label) {
+    const m = /week of\s+([a-z]+)\.?\s+(\d{1,2})/i.exec(label || '');
+    if (!m) return label || '';
+    const full = MONTH_FULL[m[1].toLowerCase()];
+    return full ? `Week of ${full} ${parseInt(m[2], 10)}` : label;
+  }
+
   return (
     <>
       <header className="header">
         <div className="brand">
           <img src="/rasa-logo.png" alt="RASA" className="brand-logo brand-logo-rasa" />
-          <div className="brand-title">Weekly Business Review</div>
+          <div className="brand-title-wrap">
+            <div className="brand-title">Weekly Business Review</div>
+            {week && <div className="brand-subtitle">{fullWeekLabel(week)}</div>}
+          </div>
           {tab !== 'scorecard' && (
             <>
               <select
