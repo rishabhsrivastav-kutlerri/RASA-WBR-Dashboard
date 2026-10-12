@@ -15,5 +15,9 @@
   "admin@kutlerri.ai": {
     "hash": "$2b$10$1IEGZGybFO3XAmXkAGE1iOqFs.DK9Vm6Vnbn3IMMY9dL6QFgYi5xm",
     "role": "admin"
+  },
+  "rasacatering@kutlerri.ai": {
+    "hash": "$2b$10$qwj7IhyxBlfqT2RLnpOyj.KFkgjEQjBmPVpGvCQRq/xoB.t4IPpHy",
+    "role": "user"
   }
 }
