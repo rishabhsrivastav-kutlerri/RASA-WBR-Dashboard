@@ -239,7 +239,7 @@ function AcqSection({ bikky, isAdmin }) {
     <>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <select value={view} onChange={e => setView(e.target.value)} style={SELECT_STYLE}>
-          <option value="monthwise">Periodically</option>
+          <option value="monthwise">Periodic</option>
           <option value="weekwise">Weekly</option>
         </select>
         {view === 'monthwise' && (
