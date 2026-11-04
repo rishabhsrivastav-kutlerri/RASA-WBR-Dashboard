@@ -74,15 +74,15 @@ function VarChip({ curr, prev, inverse = false, isRating = false, showBoth = fal
     const txt = diff >= 0 ? `${diff.toFixed(2)}` : `(${Math.abs(diff).toFixed(2)})`;
     return <span className={`kpi-change ${cls}`}>{labeled ? 'Var: ' : ''}{txt} vs LW</span>;
   }
-  if (prev === 0) {
+  if (prev === 0 && !showBoth) {
     return <span className={`kpi-change ${diff > 0 ? 'pos' : 'neu'}`}>{diff > 0 ? 'New' : '—'} vs LW</span>;
   }
-  const pct = (diff / Math.abs(prev)) * 100;
+  const pct = prev !== 0 ? (diff / Math.abs(prev)) * 100 : null;
   const cls = diff === 0 ? 'neu' : (inverse ? diff < 0 : diff > 0) ? 'pos' : 'neg';
   if (showBoth) {
     const abs = Math.round(Math.abs(diff)).toLocaleString('en-US');
     const absTxt = diff >= 0 ? `${abs}` : `(${abs})`;
-    const pctTxt = pct >= 0 ? `${pct.toFixed(1)}%` : `(${Math.abs(pct).toFixed(1)}%)`;
+    const pctTxt = pct == null ? 'N/A' : (pct >= 0 ? `${pct.toFixed(1)}%` : `(${Math.abs(pct).toFixed(1)}%)`);
     return <span className={`kpi-change ${cls}`}>{labeled ? 'Var: ' : ''}{absTxt}<br/>{labeled ? 'Var%: ' : ''}{pctTxt} vs LW</span>;
   }
   const txt = pct >= 0 ? `${pct.toFixed(1)}%` : `(${Math.abs(pct).toFixed(1)}%)`;
@@ -315,15 +315,22 @@ export default function Reviews({ data, prevData, userRole }) {
         </div>
       </div>
 
-      <div className="kpi-row">
+      <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 180px))' }}>
         {source === 'instore' ? (
           hideYelp ? (
-            <div className="kpi-card">
-              <div className="kpi-label">Google Avg Rating</div>
-              <div className="kpi-value">{typeof total.rating === 'number' && !isNaN(total.rating) ? total.rating.toFixed(1) : '—'}</div>
-              <VarChip curr={total.rating} prev={prevTotal.rating} isRating labeled />
-              <div className="kpi-change neu">{fmtN(total.reviews)} reviews</div>
-            </div>
+            <>
+              <div className="kpi-card">
+                <div className="kpi-label">Google Avg Rating</div>
+                <div className="kpi-value">{typeof total.rating === 'number' && !isNaN(total.rating) ? total.rating.toFixed(1) : '—'}</div>
+                <VarChip curr={total.rating} prev={prevTotal.rating} isRating labeled />
+                <div className="kpi-change neu">{fmtN(total.reviews)} reviews</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">5★ Reviews</div>
+                <div className="kpi-value">{fmtN(total.s5)}</div>
+                <VarChip curr={total.s5} prev={prevTotal.s5} showBoth labeled />
+              </div>
+            </>
           ) : (
             <>
               <div className="kpi-card">
@@ -341,6 +348,11 @@ export default function Reviews({ data, prevData, userRole }) {
                 <div className="kpi-label">Yelp Avg Rating</div>
                 <div className="kpi-value">{typeof total.yelp === 'number' && !isNaN(total.yelp) ? total.yelp.toFixed(1) : '—'}</div>
                 <VarChip curr={total.yelp} prev={prevTotal.yelp} isRating labeled />
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">5★ Reviews</div>
+                <div className="kpi-value">{fmtN(total.s5)}</div>
+                <VarChip curr={total.s5} prev={prevTotal.s5} showBoth labeled />
               </div>
             </>
           )
@@ -367,10 +379,17 @@ export default function Reviews({ data, prevData, userRole }) {
               <div className="kpi-value">{typeof total.dd === 'number' && !isNaN(total.dd) ? total.dd.toFixed(1) : '—'}</div>
               <VarChip curr={total.dd} prev={prevTotal.dd} isRating labeled />
             </div>
+            {typeof total.gh === 'number' && !isNaN(total.gh) && (
+              <div className="kpi-card">
+                <div className="kpi-label">Grubhub Rating</div>
+                <div className="kpi-value">{total.gh.toFixed(1)}</div>
+                <VarChip curr={total.gh} prev={prevTotal.gh} isRating labeled />
+              </div>
+            )}
             <div className="kpi-card">
-              <div className="kpi-label">Grubhub Rating</div>
-              <div className="kpi-value">{typeof total.gh === 'number' && !isNaN(total.gh) ? total.gh.toFixed(1) : '—'}</div>
-              <VarChip curr={total.gh} prev={prevTotal.gh} isRating labeled />
+              <div className="kpi-label">5★ Reviews</div>
+              <div className="kpi-value">{fmtN(total.s5)}</div>
+              <VarChip curr={total.s5} prev={prevTotal.s5} showBoth labeled />
             </div>
           </>
         )}
