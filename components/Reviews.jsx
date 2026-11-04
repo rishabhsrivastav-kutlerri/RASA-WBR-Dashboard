@@ -6,6 +6,18 @@ import { Bar } from 'react-chartjs-2';
 import Table from './Table';
 import { ExportCsvButton, ExportImageButton } from './ExportButtons';
 import { fmtN } from '@/lib/fmt';
+import { weekNumForLabel } from '@/lib/fiscalCalendar';
+
+// Starting Week of Oct 12 (Period 10 Week 3) the source sheet dropped the
+// separate Yelp rating split entirely (its columns go blank) — "Rating" is
+// effectively the Google rating from here on, so Yelp-specific UI/columns
+// are hidden from this week onward; earlier weeks keep showing both exactly
+// as before.
+const YELP_REMOVED_WEEKNUM = weekNumForLabel('Week of Oct 12');
+function isYelpHidden(weekLabel) {
+  const n = weekNumForLabel(weekLabel);
+  return n != null && YELP_REMOVED_WEEKNUM != null && n >= YELP_REMOVED_WEEKNUM;
+}
 
 const SOURCES = [
   { id: 'instore',    label: 'Google + Yelp' },
@@ -136,26 +148,26 @@ function computeTotal(rows, source) {
 
 // One reviews table (Google+Yelp or 3PD). Reused for the single per-source view
 // and for the 30-day view that stacks both kinds.
-function ReviewTable({ rows, kind, periodLabel, isAdmin }) {
+function ReviewTable({ rows, kind, periodLabel, isAdmin, hideYelp }) {
   const filtered = (rows || []).filter(r => kind !== 'thirdparty' || !EXCLUDED_3PD.includes(String(r.loc).trim()));
   const found = filtered.find(r => /^total$/i.test(r.loc));
   const total = found || computeTotal(filtered, kind) || { loc: 'Total', reviews: 0, rating: 0, s5: 0, errRate: 0 };
   const dataRows = filtered.filter(r => !/^total$/i.test(r.loc));
   const tableRows = [...dataRows, { ...total, loc: 'Total' }];
   const title = kind === 'instore'
-    ? `In-Store Reviews — Google + Yelp (${periodLabel})`
+    ? `In-Store Reviews — ${hideYelp ? 'Google' : 'Google + Yelp'} (${periodLabel})`
     : `3rd Party Reviews — UE / DD / GH (${periodLabel})`;
   const exportFilename = kind === 'instore'
-    ? 'In-Store Reviews — Google + Yelp.csv'
+    ? `In-Store Reviews — ${hideYelp ? 'Google' : 'Google + Yelp'}.csv`
     : '3rd Party Reviews — UE DD GH.csv';
   const headers = [
     { label: 'Location' },
     { label: '# Reviews', cls: 'right' },
-    { label: 'Rating', cls: 'right' },
+    { label: kind === 'instore' && hideYelp ? 'Google Rating' : 'Rating', cls: 'right' },
     { label: '5★', cls: 'right' }, { label: '4★', cls: 'right' }, { label: '3★', cls: 'right' },
     { label: '2★', cls: 'right' }, { label: '1★', cls: 'right' },
     ...(kind === 'instore'
-      ? [{ label: 'Yelp', cls: 'right' }, { label: 'Yelp #', cls: 'right' }, { label: 'Google', cls: 'right' }, { label: 'Google #', cls: 'right' }]
+      ? (hideYelp ? [] : [{ label: 'Yelp', cls: 'right' }, { label: 'Yelp #', cls: 'right' }, { label: 'Google', cls: 'right' }, { label: 'Google #', cls: 'right' }])
       : [{ label: 'UE', cls: 'right' }, { label: 'DD', cls: 'right' }, { label: 'GH', cls: 'right' }, { label: 'Error Rate', cls: 'right' }]),
   ];
   return (
@@ -172,7 +184,7 @@ function ReviewTable({ rows, kind, periodLabel, isAdmin }) {
             r.loc, fmtN(r.reviews), ratingBadge(r.rating),
             fmtN(r.s5), fmtN(r.s4), fmtN(r.s3), fmtN(r.s2), fmtN(r.s1),
             ...(kind === 'instore'
-              ? [ratingBadge(r.yelp), fmtN(r.yelpN), ratingBadge(r.google), fmtN(r.gNum)]
+              ? (hideYelp ? [] : [ratingBadge(r.yelp), fmtN(r.yelpN), ratingBadge(r.google), fmtN(r.gNum)])
               : [ratingBadge(r.ue), ratingBadge(r.dd), ratingBadge(r.gh), errRateBadge(r.errRate)]),
           ],
         }))}
@@ -186,6 +198,8 @@ export default function Reviews({ data, prevData, userRole }) {
   const [source, setSource] = useState('instore');
   const [period, setPeriod] = useState('weekly');
   const [starLoc, setStarLoc] = useState('all');
+
+  const hideYelp = isYelpHidden(data?.label);
 
   // The 30-day tables only ship from Jun 2026 onward; hide the filter otherwise.
   const has30 = !!(data?.reviews?.instore?.day30?.length || data?.reviews?.thirdparty?.day30?.length);
@@ -242,6 +256,16 @@ export default function Reviews({ data, prevData, userRole }) {
 
   const ratingChart = useMemo(() => {
     if (source === 'instore') {
+      // From Week of Oct 12 onward the sheet no longer splits Google/Yelp —
+      // "rating" is the only (and effectively Google) figure left.
+      if (hideYelp) {
+        return {
+          labels: dataRows.map(r => r.loc),
+          datasets: [
+            { label: 'Google Rating', data: dataRows.map(r => typeof r.rating === 'number' ? r.rating : null), backgroundColor: '#9f7cef', borderRadius: 4 },
+          ],
+        };
+      }
       return {
         labels: dataRows.map(r => r.loc),
         datasets: [
@@ -258,7 +282,7 @@ export default function Reviews({ data, prevData, userRole }) {
         { label: 'Grubhub',   data: dataRows.map(r => typeof r.gh === 'number' ? r.gh : null), backgroundColor: '#93c5fd', borderRadius: 4 },
       ],
     };
-  }, [dataRows, source]);
+  }, [dataRows, source, hideYelp]);
 
   const chart1Title = source === 'instore'
     ? `Avg Rating by Location (${periodLabel})`
@@ -280,7 +304,7 @@ export default function Reviews({ data, prevData, userRole }) {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="toggle-group">
             {SOURCES.map(s => (
-              <button key={s.id} className={`toggle-btn${source === s.id ? ' active' : ''}`} onClick={() => setSource(s.id)}>{s.label}</button>
+              <button key={s.id} className={`toggle-btn${source === s.id ? ' active' : ''}`} onClick={() => setSource(s.id)}>{s.id === 'instore' && hideYelp ? 'Google' : s.label}</button>
             ))}
           </div>
           <div className="toggle-group">
@@ -293,24 +317,33 @@ export default function Reviews({ data, prevData, userRole }) {
 
       <div className="kpi-row">
         {source === 'instore' ? (
-          <>
+          hideYelp ? (
             <div className="kpi-card">
-              <div className="kpi-label">Avg Rating</div>
+              <div className="kpi-label">Google Avg Rating</div>
               <div className="kpi-value">{typeof total.rating === 'number' && !isNaN(total.rating) ? total.rating.toFixed(1) : '—'}</div>
               <VarChip curr={total.rating} prev={prevTotal.rating} isRating labeled />
               <div className="kpi-change neu">{fmtN(total.reviews)} reviews</div>
             </div>
-            <div className="kpi-card">
-              <div className="kpi-label">Google Avg Rating</div>
-              <div className="kpi-value">{typeof total.google === 'number' && !isNaN(total.google) ? total.google.toFixed(1) : '—'}</div>
-              <VarChip curr={total.google} prev={prevTotal.google} isRating labeled />
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-label">Yelp Avg Rating</div>
-              <div className="kpi-value">{typeof total.yelp === 'number' && !isNaN(total.yelp) ? total.yelp.toFixed(1) : '—'}</div>
-              <VarChip curr={total.yelp} prev={prevTotal.yelp} isRating labeled />
-            </div>
-          </>
+          ) : (
+            <>
+              <div className="kpi-card">
+                <div className="kpi-label">Avg Rating</div>
+                <div className="kpi-value">{typeof total.rating === 'number' && !isNaN(total.rating) ? total.rating.toFixed(1) : '—'}</div>
+                <VarChip curr={total.rating} prev={prevTotal.rating} isRating labeled />
+                <div className="kpi-change neu">{fmtN(total.reviews)} reviews</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">Google Avg Rating</div>
+                <div className="kpi-value">{typeof total.google === 'number' && !isNaN(total.google) ? total.google.toFixed(1) : '—'}</div>
+                <VarChip curr={total.google} prev={prevTotal.google} isRating labeled />
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-label">Yelp Avg Rating</div>
+                <div className="kpi-value">{typeof total.yelp === 'number' && !isNaN(total.yelp) ? total.yelp.toFixed(1) : '—'}</div>
+                <VarChip curr={total.yelp} prev={prevTotal.yelp} isRating labeled />
+              </div>
+            </>
+          )
         ) : (
           <>
             <div className="kpi-card">
@@ -343,7 +376,7 @@ export default function Reviews({ data, prevData, userRole }) {
         )}
       </div>
 
-      <ReviewTable rows={rowsRaw} kind={source} periodLabel={periodLabel} isAdmin={isAdmin} />
+      <ReviewTable rows={rowsRaw} kind={source} periodLabel={periodLabel} isAdmin={isAdmin} hideYelp={hideYelp} />
 
       <div className="charts-row">
         <div className="chart-card">
