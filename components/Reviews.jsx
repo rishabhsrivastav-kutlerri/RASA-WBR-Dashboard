@@ -59,6 +59,12 @@ function platformAvgs(locRows, source) {
 // `isRating` = show absolute delta instead of %.
 // `showBoth` = show absolute count change AND percentage (for Reviews / 5★).
 function VarChip({ curr, prev, inverse = false, isRating = false, showBoth = false, labeled = false, isPct = false }) {
+  // showBoth (5★ Reviews card): nothing to compare against — no previous-week
+  // value, or it was 0 — show the "— vs LW" placeholder rather than a
+  // misleading diff against zero, until a real previous-week value exists.
+  if (showBoth && (prev == null || isNaN(prev) || prev === 0)) {
+    return <span className="kpi-change neu">— vs LW</span>;
+  }
   if (curr == null || prev == null || isNaN(curr) || isNaN(prev)) {
     return <span className="kpi-change neu">— vs LW</span>;
   }
@@ -82,8 +88,7 @@ function VarChip({ curr, prev, inverse = false, isRating = false, showBoth = fal
   if (showBoth) {
     const abs = Math.round(Math.abs(diff)).toLocaleString('en-US');
     const absTxt = diff >= 0 ? `${abs}` : `(${abs})`;
-    const pctTxt = pct == null ? 'N/A' : (pct >= 0 ? `${pct.toFixed(1)}%` : `(${Math.abs(pct).toFixed(1)}%)`);
-    return <span className={`kpi-change ${cls}`}>{labeled ? 'Var: ' : ''}{absTxt}<br/>{labeled ? 'Var%: ' : ''}{pctTxt} vs LW</span>;
+    return <span className={`kpi-change ${cls}`}>{labeled ? 'Var: ' : ''}{absTxt} vs LW</span>;
   }
   const txt = pct >= 0 ? `${pct.toFixed(1)}%` : `(${Math.abs(pct).toFixed(1)}%)`;
   return <span className={`kpi-change ${cls}`}>{labeled ? 'Var%: ' : ''}{txt} vs LW</span>;
@@ -315,7 +320,10 @@ export default function Reviews({ data, prevData, userRole }) {
         </div>
       </div>
 
-      <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 180px))' }}>
+      <div
+        className="kpi-row"
+        style={source === 'instore' ? { gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 260px))' } : undefined}
+      >
         {source === 'instore' ? (
           hideYelp ? (
             <>
