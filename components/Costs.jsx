@@ -456,7 +456,23 @@ export default function Costs({ data, prevData, userRole }) {
   const excludeBallpark = !!weekInfo && weekInfo.period >= 7;
   const rows = excludeBallpark ? allRows.filter(r => r.loc !== 'Ballpark') : allRows;
   const locs = rows.map(r => r.loc);
-  const total = (excludeBallpark && salesRows.length > 0) ? computeWeightedTotal(rows, salesRows) : computeTotal(d);
+  let total = (excludeBallpark && salesRows.length > 0) ? computeWeightedTotal(rows, salesRows) : computeTotal(d);
+  // The PCR's own Consolidated row (pcrTotalsSourced) is already the exact
+  // Actual figure from the PCR report — use it for Act/Prime Margin instead
+  // of re-deriving Totals by weighting against Flash Results sales, which
+  // differ slightly from the PCR's own sales and can shift the rounded %.
+  // Budget fields are left untouched (still from computeWeightedTotal/computeTotal above).
+  const existingTotal = d.find(r => /^totals?$/i.test(r.loc));
+  if (existingTotal && existingTotal.pcrTotalsSourced) {
+    total = {
+      ...total,
+      laborAct: existingTotal.laborAct,
+      cogsAct: existingTotal.cogsAct,
+      pcAct: existingTotal.pcAct,
+      primeMarginAct: existingTotal.primeMarginAct,
+      varPC: existingTotal.pcAct - (total.pcBud || 0),
+    };
+  }
   const displayRows = excludeBallpark ? [...rows, total] : d;
 
   const varLabor = hasBudget ? (total.laborAct || 0) - (total.laborBud || 0) : null;
